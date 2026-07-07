@@ -1,1 +1,1609 @@
-do if (game.PlaceId~=119091355492870) then local Players=game:GetService("Players");if Players.LocalPlayer then pcall(function() Players.LocalPlayer:Kick("Nx Hub: สคริปต์นี้รองรับเฉพาะแมพ Rock Fruit เท่านั้น! (Supported Rock Fruit only!)");end);end return;end if (getgenv().NxHubLoaded and getgenv().NxHubUnload) then pcall(getgenv().NxHubUnload);task.wait(0.2);end local Fluent,SaveManager,InterfaceManager;local localPaths={Fluent="FileDumper/Fluent.lua",SaveManager="FileDumper/SaveManager.lua",InterfaceManager="FileDumper/InterfaceManager.lua"};local isLocalExists=false;pcall(function() if (isfile and isfile(localPaths.Fluent) and isfile(localPaths.SaveManager) and isfile(localPaths.InterfaceManager)) then isLocalExists=true;end end);if isLocalExists then pcall(function() Fluent=loadstring(readfile(localPaths.Fluent))();SaveManager=loadstring(readfile(localPaths.SaveManager))();InterfaceManager=loadstring(readfile(localPaths.InterfaceManager))();print("[Nx Hub] Loaded UI Library from local workspace cache.");end);end if  not Fluent then pcall(function() local fluentCode=game:HttpGet("https://cdn.jsdelivr.net/gh/NxHup/Nx-Hub@main/Fluent.lua");if (fluentCode and ( #fluentCode>5000) and  not string.find(fluentCode,"Too Many Requests")) then Fluent=loadstring(fluentCode)();SaveManager=loadstring(game:HttpGet("https://cdn.jsdelivr.net/gh/NxHup/Nx-Hub@main/SaveManager.lua"))();InterfaceManager=loadstring(game:HttpGet("https://cdn.jsdelivr.net/gh/NxHup/Nx-Hub@main/InterfaceManager.lua"))();print("[Nx Hub] Loaded UI Library via jsDelivr CDN.");end end);end if  not Fluent then pcall(function() Fluent=loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))();SaveManager=loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))();InterfaceManager=loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))();print("[Nx Hub] Loaded UI Library via official GitHub fallback.");end);end local Players=game:GetService("Players");local ReplicatedStorage=game:GetService("ReplicatedStorage");local UserInputService=game:GetService("UserInputService");local RunService=game:GetService("RunService");local HttpService=game:GetService("HttpService");local TweenService=game:GetService("TweenService");local LocalPlayer=Players.LocalPlayer;local function GetCharacter() return LocalPlayer.Character;end local function GetHRP() local c=GetCharacter();return c and c:FindFirstChild("HumanoidRootPart") ;end local Character=LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() ;LocalPlayer.CharacterAdded:Connect(function(c) Character=c;end);local Remotes=ReplicatedStorage:WaitForChild("Remotes");local Action=Remotes:WaitForChild("Action");local InventoryRemote=Remotes:WaitForChild("Inventory");repeat task.wait();until LocalPlayer:GetAttribute("Loaded") local function GetAttr(a) return LocalPlayer:GetAttribute(a);end local function abbreviate(n) n=n or 0 ;local u={"","K","M","B","T","QA"};if (n<1000) then return tostring(math.floor(n));end local i=math.min(math.floor(math.log10(n)/3 ), #u-1 );return string.format("%.2f",n/(10^(i * 3)) ):gsub("%.?0+$","")   .. u[i + 1 ] ;end local function GetEquippedTool() local c=LocalPlayer.Character;if  not c then return nil;end for _,v in c:GetChildren() do if v:IsA("Tool") then return v.Name;end end return nil;end local function GetBackpackTools() local tools,seen={},{};local c=LocalPlayer.Character;if c then for _,v in c:GetChildren() do if (v:IsA("Tool") and  not seen[v.Name]) then seen[v.Name]=true;table.insert(tools,v.Name);end end end for _,v in LocalPlayer.Backpack:GetChildren() do if (v:IsA("Tool") and  not seen[v.Name]) then seen[v.Name]=true;table.insert(tools,v.Name);end end table.sort(tools);return tools;end local Window=Fluent:CreateWindow({Title="Nx Hub",SubTitle="v1.0",TabWidth=155,Size=UDim2.fromOffset(560,480),Acrylic=true,Theme="Dark",MinimizeKey=Enum.KeyCode.RightControl});local Tabs={Main=Window:AddTab({Title="Main",Icon="home"}),AutoFarm=Window:AddTab({Title="Auto Farm",Icon="swords"}),Boss=Window:AddTab({Title="Boss",Icon="skull"}),Teleport=Window:AddTab({Title="Teleport",Icon="map-pin"}),Misc=Window:AddTab({Title="Misc",Icon="box"}),Settings=Window:AddTab({Title="Settings",Icon="settings"})};local Options=Fluent.Options;Fluent:Notify({Title="Nx Hub",Content="Script loaded.",Duration=4});local selectedWeapon="";local autoHoldConn=nil;local skillLoop=nil;local autoAttackLoop=nil;local function EnsureWeaponEquipped() local char=LocalPlayer.Character;local hum=char and char:FindFirstChildOfClass("Humanoid") ;if  not hum then return;end local currentTool=char:FindFirstChildOfClass("Tool");if currentTool then selectedWeapon=currentTool.Name;return;end local toolToEquip=nil;if (selectedWeapon and (selectedWeapon~="") and (selectedWeapon~="(No Tool Found)")) then toolToEquip=LocalPlayer.Backpack:FindFirstChild(selectedWeapon);end if  not toolToEquip then for _,v in ipairs(LocalPlayer.Backpack:GetChildren()) do if v:IsA("Tool") then toolToEquip=v;selectedWeapon=v.Name;break;end end end if toolToEquip then pcall(function() hum:EquipTool(toolToEquip);end);end end local function CheckAttackLoop() local shouldAttack=false;pcall(function() if (Options.AutoAttackMain and Options.AutoAttackMain.Value) then shouldAttack=true;end end);if shouldAttack then if  not autoAttackLoop then autoAttackLoop=task.spawn(function() local Action=ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Action");while true do EnsureWeaponEquipped();local c=LocalPlayer.Character;if c then local equippedToolInstance=c:FindFirstChildOfClass("Tool");if equippedToolInstance then pcall(function() equippedToolInstance:Activate();end);if Action then pcall(function() Action:FireServer(equippedToolInstance.Name,"hit");end);end end end task.wait(0.1);end end);end elseif autoAttackLoop then task.cancel(autoAttackLoop);autoAttackLoop=nil;end end Tabs.Main:AddButton({Title="Show Stats",Description="แสดงข้อมูลตัวละคร",Callback=function() local lvl=GetAttr("Level") or "?" ;local exp=GetAttr("Exp") or 0 ;local mex=GetAttr("MaxExp") or 1 ;local bel=GetAttr("Beli") or 0 ;local dia=GetAttr("Diamond") or 0 ;local cls=GetAttr("UseClass") or "None" ;Fluent:Notify({Title="Player Stats",Content=("Level: %s | EXP: %s / %s\nBeli: %s | Diamond: %s\nClass: %s"):format(tostring(lvl),abbreviate(exp),abbreviate(mex),abbreviate(bel),abbreviate(dia),tostring(((cls=="[]") and "None") or cls )),Duration=8});end});local initWait=0;while ( #GetBackpackTools()==0) and (initWait<10)  do task.wait(0.3);initWait=initWait + 1 ;end local currentTools=GetBackpackTools();if ( #currentTools==0) then currentTools={"(No Tool Found)"};end selectedWeapon=currentTools[1];local WeaponDropdown=Tabs.Main:AddDropdown("WeaponSelect",{Title="Select Weapon",Description="เลือก Weapon จากของใน Backpack",Values=currentTools,Multi=false,Default=1});WeaponDropdown:OnChanged(function(val) selectedWeapon=val;end);Tabs.Main:AddButton({Title="Refresh Backpack",Description="โหลดรายการ Weapon ใน Backpack ใหม่",Callback=function() local tools=GetBackpackTools();if ( #tools==0) then Fluent:Notify({Title="Backpack",Content="No tool found in backpack.",Duration=3});return;end currentTools=tools;selectedWeapon=tools[1];WeaponDropdown.Values=tools;WeaponDropdown:SetValue(tools[1]);Fluent:Notify({Title=("Backpack (%d items)"):format( #tools),Content=table.concat(tools,"\n"),Duration=8});end});Tabs.Main:AddToggle("AutoHold",{Title="Auto Hold Weapon",Description="เปิดเพื่อถือ Weapon ที่เลือกตลอดเวลา",Default=false}):OnChanged(function() if Options.AutoHold.Value then local name=selectedWeapon;if ( not name or (name=="") or (name=="(No Tool Found)")) then Options.AutoHold:SetValue(false);Fluent:Notify({Title="Weapon",Content="Please select a weapon first.",Duration=3});return;end local c=LocalPlayer.Character;local h=c and c:FindFirstChildOfClass("Humanoid") ;if h then local t=LocalPlayer.Backpack:FindFirstChild(name);if t then h:EquipTool(t);else InventoryRemote:FireServer(name);end end Fluent:Notify({Title="Auto Hold",Content="Holding: "   .. name ,Duration=3});if autoHoldConn then autoHoldConn:Disconnect();end autoHoldConn=RunService.Heartbeat:Connect(function() if  not Options.AutoHold.Value then return;end local n=selectedWeapon;if ( not n or (n=="")) then return;end local c2=LocalPlayer.Character;local h2=c2 and c2:FindFirstChildOfClass("Humanoid") ;if ( not c2 or  not h2) then return;end if (GetEquippedTool()~=n) then local t2=LocalPlayer.Backpack:FindFirstChild(n);if t2 then h2:EquipTool(t2);end end end);elseif autoHoldConn then autoHoldConn:Disconnect();autoHoldConn=nil;end end);Tabs.Main:AddToggle("AutoAttackMain",{Title="Auto Attack",Description="โจมตีอัตโนมัติ (ยืนตีเฉยๆ ไม่เดินไปหามอน)",Default=false}):OnChanged(CheckAttackLoop);local autoHakiLoop=nil;Tabs.Main:AddToggle("AutoHaki",{Title="Auto Haki",Description="ตรวจเช็คและเปิดใช้งานฮาคิอัตโนมัติ",Default=false}):OnChanged(function() if Options.AutoHaki.Value then if autoHakiLoop then return;end autoHakiLoop=task.spawn(function() while Options.AutoHaki.Value do local c=LocalPlayer.Character;if c then local hasHaki=c:FindFirstChild("HakiFolder")~=nil ;if  not hasHaki then if Action then pcall(function() Action:FireServer("Misc","buso");end);end end end task.wait(2);end end);elseif autoHakiLoop then task.cancel(autoHakiLoop);autoHakiLoop=nil;end end);Tabs.Main:AddParagraph({Title="Auto Skill",Content="เปิด Toggle ด้านล่างเพื่อใช้สกิลอัตโนมัติ"});Tabs.Main:AddSlider("SkillDelay",{Title="Skill Delay",Description="หน่วงเวลาระหว่างสกิล (x0.1s) | 0 = ปล่อยทันที",Default=0,Min=0,Max=50,Rounding=0,Callback=function(v) end});local function StartSkillLoop() if skillLoop then return;end skillLoop=task.spawn(function() while true do local delay=(Options.SkillDelay.Value or 0) * 0.1 ;local tool=GetEquippedTool();if tool then if (Options.SkillZ and Options.SkillZ.Value) then Action:FireServer(tool,"z");if (delay>0) then task.wait(delay);end end if (Options.SkillX and Options.SkillX.Value) then Action:FireServer(tool,"x");if (delay>0) then task.wait(delay);end end if (Options.SkillC and Options.SkillC.Value) then Action:FireServer(tool,"c");if (delay>0) then task.wait(delay);end end if (Options.SkillV and Options.SkillV.Value) then Action:FireServer(tool,"v");if (delay>0) then task.wait(delay);end end end task.wait();end end);end local function CheckSkillLoop() local any=(Options.SkillZ and Options.SkillZ.Value) or (Options.SkillX and Options.SkillX.Value) or (Options.SkillC and Options.SkillC.Value) or (Options.SkillV and Options.SkillV.Value) ;if any then StartSkillLoop();elseif skillLoop then task.cancel(skillLoop);skillLoop=nil;end end Tabs.Main:AddToggle("SkillZ",{Title="Auto Skill Z",Default=false}):OnChanged(CheckSkillLoop);Tabs.Main:AddToggle("SkillX",{Title="Auto Skill X",Default=false}):OnChanged(CheckSkillLoop);Tabs.Main:AddToggle("SkillC",{Title="Auto Skill C",Default=false}):OnChanged(CheckSkillLoop);Tabs.Main:AddToggle("SkillV",{Title="Auto Skill V",Default=false}):OnChanged(CheckSkillLoop);Tabs.Main:AddDropdown("FarmPosition",{Title="Farm Position",Description="ตำแหน่งที่จะยืนฟาร์ม",Values={"Above","Below","Behind","In Front"},Multi=false,Default=3});Tabs.Main:AddSlider("FarmDistance",{Title="Farm Distance",Description="ระยะห่างจากเป้าหมาย",Default=10,Min=0,Max=30,Rounding=1,Callback=function(v) end});local function GetNearestAliveMob(mobName) local nearest=nil;local minDist=math.huge;local hrp=Character and Character:FindFirstChild("HumanoidRootPart") ;local myPos=(hrp and hrp.Position) or Vector3.zero ;local cleanName=string.gsub(mobName,"%s*%[?[Ll][Vv][Ll]?%.?%s*%d+%]?$","");cleanName=string.gsub(cleanName,"%s*%[?[Ll][Ee][Vv][Ee][Ll]%s*%d+%]?$","");local targetNorm=string.lower(string.match(cleanName,"^%s*(.-)%s*$") or cleanName );for _,v in ipairs(workspace:GetDescendants()) do if (v:IsA("Model") and v:FindFirstChild("Humanoid") and (v.Humanoid.Health>0) and v:FindFirstChild("HumanoidRootPart") and  not Players:GetPlayerFromCharacter(v) and  not v:FindFirstChildWhichIsA("ProximityPrompt",true)) then local vClean=string.gsub(v.Name,"%s*%[?[Ll][Vv][Ll]?%.?%s*%d+%]?$","");vClean=string.gsub(vClean,"%s*%[?[Ll][Ee][Vv][Ee][Ll]%s*%d+%]?$","");local vNorm=string.lower(string.match(vClean,"^%s*(.-)%s*$") or vClean );if (vNorm==targetNorm) then local dist=(v.HumanoidRootPart.Position-myPos).Magnitude;if (dist<minDist) then minDist=dist;nearest=v;end end end end return nearest;end local function TweenTo(target) if ( not Character or  not Character:FindFirstChild("HumanoidRootPart")) then return;end local hrp=Character.HumanoidRootPart;local tCFrame;if (typeof(target)=="Instance") then if target:IsA("Model") then tCFrame=target:GetPivot();elseif target:IsA("BasePart") then tCFrame=target.CFrame;end elseif (typeof(target)=="CFrame") then tCFrame=target;end if  not tCFrame then return nil;end local tPos=tCFrame.Position;local pos=(Options.FarmPosition and Options.FarmPosition.Value) or "Above" ;local dist=(Options.FarmDistance and Options.FarmDistance.Value) or 10 ;local finalPos;if (pos=="Above") then finalPos=tPos + Vector3.new(0,dist,0) ;elseif (pos=="Below") then finalPos=tPos + Vector3.new(0, -dist,0) ;elseif (pos=="Behind") then finalPos=(tCFrame * CFrame.new(0,0,dist)).Position;elseif (pos=="In Front") then finalPos=(tCFrame * CFrame.new(0,0, -dist)).Position;end local targetCFrame=CFrame.lookAt(finalPos,tPos);hrp.CFrame=targetCFrame;hrp.AssemblyLinearVelocity=Vector3.zero;hrp.AssemblyAngularVelocity=Vector3.zero;return nil;end local npcQuestData={};local function GetQuestNPCs() local list={};local seen={};npcQuestData={};local mobAttrKeys={"Name","EnemyName","MonsterName","TargetName","Target","Enemy","KillName","MobName","QuestEnemy"};local lvlAttrKeys={"Level","EnemyLevel","MonsterLevel","TargetLevel","KillLevel","LvReq"};for _,v in ipairs(workspace:GetDescendants()) do if v:IsA("ProximityPrompt") then local model=v:FindFirstAncestorOfClass("Model");local part=v.Parent;local npcModel=model or part ;local npcName=(model and (model.Name~="Workspace") and model.Name) or part.Name ;if (string.find(string.lower(npcName),"quest") and  not seen[npcName] and  not Players:GetPlayerFromCharacter(npcModel)) then local mobName,level;for _,key in ipairs(mobAttrKeys) do local val=npcModel:GetAttribute(key);if (val and (tostring(val)~="")) then mobName=tostring(val);break;end end for _,key in ipairs(lvlAttrKeys) do local val=npcModel:GetAttribute(key);if val then level=tonumber(val);break;end end if  not mobName then for _,child in ipairs(npcModel:GetDescendants()) do if ((child:IsA("TextLabel") or child:IsA("TextButton")) and child.Parent and (child.Parent:IsA("BillboardGui") or child.Parent:IsA("SurfaceGui") or child.Parent:IsA("ScreenGui"))) then local txt=child.Text;local extracted=string.match(txt,"[Kk]ill%s+(.-)%s*[xX%d]") or string.match(txt,"[Hh]unt%s+(.-)%s*[xX%d]") or string.match(txt,"[Dd]efeat%s+(.-)%s*[xX%d]") or string.match(txt,"[Ss]lay%s+(.-)%s*[xX%d]") ;if (extracted and (extracted~="")) then mobName=string.match(extracted,"^%s*(.-)%s*$");end if  not level then level=tonumber(string.match(txt,"[Ll]v%.?%s*(%d+)") or string.match(txt,"[Ll]evel%s*(%d+)") );end if mobName then break;end end end end local displayName;if (mobName and (mobName~="")) then if level then displayName=mobName   .. " (Lv."   .. level   .. ")" ;else displayName=mobName;end else displayName=npcName;mobName=npcName;end seen[npcName]=true;npcQuestData[displayName]={npcName=npcName,mobName=mobName or "" ,level=level};table.insert(list,displayName);end end end table.sort(list);if ( #list==0) then table.insert(list,"(No Quest NPCs Found)");end return list;end local currentNPCs=GetQuestNPCs();local selectedNPCList={};local autoFarmLoop=nil;Tabs.AutoFarm:AddDropdown("NPCSelect",{Title="Select Quest Monsters",Description="เลือกได้หลายตัว จะฟาร์มตามลำดับที่เลือก",Values=currentNPCs,Multi=true,Default={}}):OnChanged(function(val) selectedNPCList={};for _,name in ipairs(currentNPCs) do if val[name] then table.insert(selectedNPCList,name);end end end);Tabs.AutoFarm:AddButton({Title="Refresh Quest NPCs",Description="สแกนหา Quest NPC ใหม่",Callback=function() currentNPCs=GetQuestNPCs();Fluent:Notify({Title="Quest NPCs",Content=("Found %d NPCs"):format( #currentNPCs),Duration=4});end});local function GetBestQuestForLevel(playerLevel) local bestQuest=nil;local maxQuestLevel= -1;for displayName,data in pairs(npcQuestData) do if (data.level and (data.level<=playerLevel)) then if (data.level>maxQuestLevel) then maxQuestLevel=data.level;bestQuest=displayName;end end end if  not bestQuest then local minQuestLevel=math.huge;for displayName,data in pairs(npcQuestData) do if (data.level and (data.level<minQuestLevel)) then minQuestLevel=data.level;bestQuest=displayName;end end end return bestQuest;end local autoFarmLevelLoop=nil;Tabs.AutoFarm:AddToggle("AutoFarmLevel",{Title="Auto Farm Level (1 - Max)",Description="ฟาร์มเควสตามเลเวลปัจจุบันอัตโนมัติ (ไม่ต้องเลือกเควส)",Default=false}):OnChanged(function() if Options.AutoFarmLevel.Value then if (Options.AutoFarmToggle and Options.AutoFarmToggle.Value) then Options.AutoFarmToggle:SetValue(false);end if (Options.AutoFarmKillOnly and Options.AutoFarmKillOnly.Value) then Options.AutoFarmKillOnly:SetValue(false);end if (Options.AutoFarmEvent and Options.AutoFarmEvent.Value) then Options.AutoFarmEvent:SetValue(false);end if autoFarmLevelLoop then return;end local NetworkEvent=ReplicatedStorage:WaitForChild("Modules"):WaitForChild("NetworkFramework"):WaitForChild("NetworkEvent");autoFarmLevelLoop=task.spawn(function() while Options.AutoFarmLevel.Value do local playerLevel=tonumber(GetAttr("Level") or 1 );GetQuestNPCs();local currentSelected=GetBestQuestForLevel(playerLevel);if  not currentSelected then task.wait(1);continue;end local questInfo=npcQuestData[currentSelected];if  not questInfo then task.wait(1);continue;end local npcModelName=questInfo.npcName;local mobName=questInfo.mobName;local questData=nil;pcall(function() local raw=tostring(LocalPlayer:GetAttribute("Quest") or "[]" );if ((raw~="") and (raw~="[]") and (raw~="{}")) then questData=HttpService:JSONDecode(raw);end end);local hasQuest=questData~=nil ;local questTitle=(hasQuest and tostring(questData['Title'] or "" )) or "" ;local isCorrectQuest=hasQuest and (string.lower(questTitle)==string.lower(mobName)) ;if (hasQuest and  not isCorrectQuest) then pcall(function() NetworkEvent:FireServer("fire",nil,"Quest","Cancel");end);task.wait(0.8);hasQuest=false;end if  not hasQuest then local targetNPC=nil;for _,v in ipairs(workspace:GetDescendants()) do if (v:IsA("Model") and (v.Name==npcModelName)) then targetNPC=v;break;end end if (targetNPC and Character and Character:FindFirstChild("HumanoidRootPart")) then TweenTo(targetNPC:GetPivot());task.wait(0.4);for _,prompt in ipairs(targetNPC:GetDescendants()) do if prompt:IsA("ProximityPrompt") then pcall(function() fireproximityprompt(prompt);end);end end task.wait(0.6);end end local killRequired=1;pcall(function() local raw=tostring(LocalPlayer:GetAttribute("Quest") or "[]" );if ((raw~="") and (raw~="[]") and (raw~="{}")) then local data=HttpService:JSONDecode(raw);killRequired=tonumber(data['Max']) or 1 ;end end);local function findMob() local best=nil;local minDist=math.huge;local char=GetCharacter();local myPos=(char and char:FindFirstChild("HumanoidRootPart") and char.HumanoidRootPart.Position) or Vector3.zero ;for _,v in ipairs(workspace:GetDescendants()) do if (v:IsA("Model") and v:FindFirstChild("Humanoid") and (v.Humanoid.Health>0) and v:FindFirstChild("HumanoidRootPart") and  not Players:GetPlayerFromCharacter(v) and  not v:FindFirstChildWhichIsA("ProximityPrompt",true)) then local vClean=string.gsub(v.Name,"%s*%[?[Ll][Vv][Ll]?%.?%s*%d+%]?%s*$","");vClean=string.match(vClean,"^%s*(.-)%s*$") or vClean ;if (string.lower(vClean)==string.lower(mobName)) then local dist=(v.HumanoidRootPart.Position-myPos).Magnitude;if (dist<minDist) then minDist=dist;best=v;end end end end return best;end local killCount=0;while Options.AutoFarmLevel.Value and (killCount<killRequired)  do local targetMob=findMob();if (targetMob and targetMob:FindFirstChild("HumanoidRootPart")) then local targetHRP=targetMob.HumanoidRootPart;local heartbeatConn;heartbeatConn=RunService.Heartbeat:Connect(function() if ( not Options.AutoFarmLevel.Value or  not targetMob.Parent or  not targetMob:FindFirstChild("Humanoid") or (targetMob.Humanoid.Health<=0)) then heartbeatConn:Disconnect();return;end local c=GetCharacter();if c then Character=c;end TweenTo(targetHRP);end);while Options.AutoFarmLevel.Value and targetMob.Parent and targetMob:FindFirstChild("Humanoid") and (targetMob.Humanoid.Health>0)  do task.wait(0.1);end if heartbeatConn then heartbeatConn:Disconnect();end if ((targetMob.Parent==nil) or (targetMob:FindFirstChild("Humanoid") and (targetMob.Humanoid.Health<=0))) then killCount=killCount + 1 ;end else task.wait(1);end end task.wait();end end);elseif autoFarmLevelLoop then task.cancel(autoFarmLevelLoop);autoFarmLevelLoop=nil;end end);Tabs.AutoFarm:AddToggle("AutoFarmToggle",{Title="Auto Farm (Quest + Kill)",Description="เปิดเพื่อวาร์ปไปรับเควส -> วิ่งไปตีมอน -> วนซ้ำ",Default=false}):OnChanged(function() if Options.AutoFarmToggle.Value then if (Options.AutoFarmLevel and Options.AutoFarmLevel.Value) then Options.AutoFarmLevel:SetValue(false);end if (Options.AutoFarmKillOnly and Options.AutoFarmKillOnly.Value) then Options.AutoFarmKillOnly:SetValue(false);end if (Options.AutoFarmEvent and Options.AutoFarmEvent.Value) then Options.AutoFarmEvent:SetValue(false);end if autoFarmLoop then return;end local NetworkEvent=ReplicatedStorage:WaitForChild("Modules"):WaitForChild("NetworkFramework"):WaitForChild("NetworkEvent");autoFarmLoop=task.spawn(function() local questIndex=1;while Options.AutoFarmToggle.Value do if ( #selectedNPCList==0) then task.wait(1);continue;end local currentSelected=selectedNPCList[questIndex];if  not currentSelected then questIndex=1;continue;end local questInfo=npcQuestData[currentSelected];if  not questInfo then questIndex=(questIndex% #selectedNPCList) + 1 ;continue;end local npcModelName=questInfo.npcName;local mobName=questInfo.mobName;local questData=nil;pcall(function() local raw=tostring(LocalPlayer:GetAttribute("Quest") or "[]" );if ((raw~="") and (raw~="[]") and (raw~="{}")) then questData=HttpService:JSONDecode(raw);end end);local hasQuest=questData~=nil ;local questTitle=(hasQuest and tostring(questData['Title'] or "" )) or "" ;local isCorrectQuest=hasQuest and (string.lower(questTitle)==string.lower(mobName)) ;if (hasQuest and  not isCorrectQuest) then pcall(function() NetworkEvent:FireServer("fire",nil,"Quest","Cancel");end);task.wait(0.8);hasQuest=false;end if  not hasQuest then local targetNPC=nil;for _,v in ipairs(workspace:GetDescendants()) do if (v:IsA("Model") and (v.Name==npcModelName)) then targetNPC=v;break;end end if (targetNPC and Character and Character:FindFirstChild("HumanoidRootPart")) then TweenTo(targetNPC:GetPivot());task.wait(0.4);for _,prompt in ipairs(targetNPC:GetDescendants()) do if prompt:IsA("ProximityPrompt") then pcall(function() fireproximityprompt(prompt);end);end end task.wait(0.6);end end local killRequired=1;pcall(function() local raw=tostring(LocalPlayer:GetAttribute("Quest") or "[]" );if ((raw~="") and (raw~="[]") and (raw~="{}")) then local data=HttpService:JSONDecode(raw);killRequired=tonumber(data['Max']) or 1 ;end end);local function findMob() local best=nil;local minDist=math.huge;local char=GetCharacter();local myPos=(char and char:FindFirstChild("HumanoidRootPart") and char.HumanoidRootPart.Position) or Vector3.zero ;for _,v in ipairs(workspace:GetDescendants()) do if (v:IsA("Model") and v:FindFirstChild("Humanoid") and (v.Humanoid.Health>0) and v:FindFirstChild("HumanoidRootPart") and  not Players:GetPlayerFromCharacter(v) and  not v:FindFirstChildWhichIsA("ProximityPrompt",true)) then local vClean=string.gsub(v.Name,"%s*%[?[Ll][Vv][Ll]?%.?%s*%d+%]?%s*$","");vClean=string.match(vClean,"^%s*(.-)%s*$") or vClean ;if (string.lower(vClean)==string.lower(mobName)) then local dist=(v.HumanoidRootPart.Position-myPos).Magnitude;if (dist<minDist) then minDist=dist;best=v;end end end end return best;end local killCount=0;while Options.AutoFarmToggle.Value and (killCount<killRequired)  do local targetMob=findMob();if (targetMob and targetMob:FindFirstChild("HumanoidRootPart")) then local targetHRP=targetMob.HumanoidRootPart;local heartbeatConn;heartbeatConn=RunService.Heartbeat:Connect(function() if ( not Options.AutoFarmToggle.Value or  not targetMob.Parent or  not targetMob:FindFirstChild("Humanoid") or (targetMob.Humanoid.Health<=0)) then heartbeatConn:Disconnect();return;end local c=GetCharacter();if c then Character=c;end TweenTo(targetHRP);end);while Options.AutoFarmToggle.Value and targetMob.Parent and targetMob:FindFirstChild("Humanoid") and (targetMob.Humanoid.Health>0)  do task.wait(0.1);end heartbeatConn:Disconnect();if ((targetMob.Parent==nil) or (targetMob:FindFirstChild("Humanoid") and (targetMob.Humanoid.Health<=0))) then killCount=killCount + 1 ;end else task.wait(1);end end if ( #selectedNPCList>0) then questIndex=(questIndex% #selectedNPCList) + 1 ;end end end);elseif autoFarmLoop then task.cancel(autoFarmLoop);autoFarmLoop=nil;end end);local autoFarmKillOnlyLoop=nil;Tabs.AutoFarm:AddToggle("AutoFarmKillOnly",{Title="Auto Farm (Kill Only)",Description="ตีมอนสเตอร์จากเควสที่เลือกด้านบน (ไม่ต้องรับเควส)",Default=false}):OnChanged(function() if Options.AutoFarmKillOnly.Value then if (Options.AutoFarmToggle and Options.AutoFarmToggle.Value) then Options.AutoFarmToggle:SetValue(false);end if (Options.AutoFarmLevel and Options.AutoFarmLevel.Value) then Options.AutoFarmLevel:SetValue(false);end if (Options.AutoFarmEvent and Options.AutoFarmEvent.Value) then Options.AutoFarmEvent:SetValue(false);end if autoFarmKillOnlyLoop then return;end autoFarmKillOnlyLoop=task.spawn(function() local questIndex=1;while Options.AutoFarmKillOnly.Value do if ( #selectedNPCList==0) then task.wait(1);continue;end local currentSelected=selectedNPCList[questIndex];if  not currentSelected then questIndex=1;continue;end local questInfo=npcQuestData[currentSelected];if  not questInfo then questIndex=(questIndex% #selectedNPCList) + 1 ;continue;end local mobName=questInfo.mobName;local targetMob=GetNearestAliveMob(mobName);if (targetMob and Character and Character:FindFirstChild("HumanoidRootPart")) then local targetHRP=targetMob.HumanoidRootPart;local heartbeatConn;heartbeatConn=RunService.Heartbeat:Connect(function() if ( not Options.AutoFarmKillOnly.Value or  not targetMob.Parent or  not targetMob:FindFirstChild("Humanoid") or (targetMob.Humanoid.Health<=0)) then heartbeatConn:Disconnect();return;end local c=GetCharacter();if c then Character=c;end TweenTo(targetHRP);end);while Options.AutoFarmKillOnly.Value and targetMob.Parent and targetMob:FindFirstChild("Humanoid") and (targetMob.Humanoid.Health>0)  do task.wait(0.1);end if heartbeatConn then heartbeatConn:Disconnect();end else task.wait(1);questIndex=(questIndex% #selectedNPCList) + 1 ;end task.wait();end end);elseif autoFarmKillOnlyLoop then task.cancel(autoFarmKillOnlyLoop);autoFarmKillOnlyLoop=nil;end end);local autoFarmEventLoop=nil;Tabs.AutoFarm:AddToggle("AutoFarmEvent",{Title="Auto Farm Event Island",Description="วาร์ปไปเกาะ Event และฟาร์มมอนสเตอร์ทั้งหมดบนเกาะอัตโนมัติ",Default=false}):OnChanged(function() if Options.AutoFarmEvent.Value then if (Options.AutoFarmToggle and Options.AutoFarmToggle.Value) then Options.AutoFarmToggle:SetValue(false);end if (Options.AutoFarmLevel and Options.AutoFarmLevel.Value) then Options.AutoFarmLevel:SetValue(false);end if (Options.AutoFarmKillOnly and Options.AutoFarmKillOnly.Value) then Options.AutoFarmKillOnly:SetValue(false);end if autoFarmEventLoop then return;end autoFarmEventLoop=task.spawn(function() local standbyCF=CFrame.new( -65.49,28.86, -1359.47);local eventIslandPos=standbyCF.Position;local function FindNearestEventMob() local best=nil;local minDist=math.huge;local char=GetCharacter();local myPos=(char and char:FindFirstChild("HumanoidRootPart") and char.HumanoidRootPart.Position) or Vector3.zero ;for _,v in ipairs(workspace:GetDescendants()) do if (v:IsA("Model") and v:FindFirstChild("Humanoid") and (v.Humanoid.Health>0) and v:FindFirstChild("HumanoidRootPart")) then if  not Players:GetPlayerFromCharacter(v) then local mobPos=v.HumanoidRootPart.Position;local isEventMob=false;if ((mobPos-eventIslandPos).Magnitude<1200) then if ( not v:FindFirstChildWhichIsA("ProximityPrompt",true) and  not string.find(string.lower(v.Name),"npc")) then isEventMob=true;end elseif string.find(string.lower(v.Name),"duck") then isEventMob=true;end if isEventMob then local dist=(mobPos-myPos).Magnitude;if (dist<minDist) then minDist=dist;best=v;end end end end end return best;end while Options.AutoFarmEvent.Value do local targetMob=FindNearestEventMob();if (targetMob and Character and Character:FindFirstChild("HumanoidRootPart")) then local targetHRP=targetMob.HumanoidRootPart;local heartbeatConn;heartbeatConn=RunService.Heartbeat:Connect(function() if ( not Options.AutoFarmEvent.Value or  not targetMob.Parent or  not targetMob:FindFirstChild("Humanoid") or (targetMob.Humanoid.Health<=0)) then heartbeatConn:Disconnect();return;end local c=GetCharacter();if c then Character=c;end TweenTo(targetHRP);end);while Options.AutoFarmEvent.Value and targetMob.Parent and targetMob:FindFirstChild("Humanoid") and (targetMob.Humanoid.Health>0)  do task.wait(0.1);end if heartbeatConn then heartbeatConn:Disconnect();end else if (Character and Character:FindFirstChild("HumanoidRootPart")) then TweenTo(standbyCF);end task.wait(1);end task.wait();end end);elseif autoFarmEventLoop then task.cancel(autoFarmEventLoop);autoFarmEventLoop=nil;end end);local autoRebirthLoop=nil;Tabs.AutoFarm:AddToggle("AutoRebirth",{Title="Auto Rebirth",Description="รีเบิร์ธอัตโนมัติเมื่อเลเวลตัน",Default=false}):OnChanged(function() if Options.AutoRebirth.Value then if autoRebirthLoop then return;end autoRebirthLoop=task.spawn(function() local NetworkEvent=ReplicatedStorage:WaitForChild("Modules"):WaitForChild("NetworkFramework"):WaitForChild("NetworkEvent");while Options.AutoRebirth.Value do pcall(function() NetworkEvent:FireServer("fire",nil,"Rebirth");end);task.wait(5);end end);elseif autoRebirthLoop then task.cancel(autoRebirthLoop);autoRebirthLoop=nil;end end);local autoStatsLoop=nil;local statAmount=1;local selectedStats={Melee=false,Defense=false,Sword=false,Power=false};local function UpdateAutoStatsLoop() local hasAny=selectedStats.Melee or selectedStats.Defense or selectedStats.Sword or selectedStats.Power ;if hasAny then if  not autoStatsLoop then autoStatsLoop=task.spawn(function() local SystemRemote=ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("System");while true do for statName,isEnabled in pairs(selectedStats) do if isEnabled then pcall(function() SystemRemote:FireServer("UpStats",statName,statAmount);end);end end task.wait(0.5);end end);end elseif autoStatsLoop then task.cancel(autoStatsLoop);autoStatsLoop=nil;end end Tabs.AutoFarm:AddParagraph({Title="Auto Stats",Content="อัปสเตตัสอัตโนมัติ"});Tabs.AutoFarm:AddInput("AutoStatAmount",{Title="Points to Add (แต้มที่อัปต่อครั้ง)",Default="1",Numeric=true,Finished=false,Placeholder="ใส่จำนวนแต้ม เช่น 1, 10, 1111"}):OnChanged(function(Value) statAmount=tonumber(Value) or 1 ;end);Tabs.AutoFarm:AddToggle("AutoStatMelee",{Title="Auto Melee",Default=false}):OnChanged(function() selectedStats.Melee=Options.AutoStatMelee.Value;UpdateAutoStatsLoop();end);Tabs.AutoFarm:AddToggle("AutoStatDefense",{Title="Auto Defense",Default=false}):OnChanged(function() selectedStats.Defense=Options.AutoStatDefense.Value;UpdateAutoStatsLoop();end);Tabs.AutoFarm:AddToggle("AutoStatSword",{Title="Auto Sword",Default=false}):OnChanged(function() selectedStats.Sword=Options.AutoStatSword.Value;UpdateAutoStatsLoop();end);Tabs.AutoFarm:AddToggle("AutoStatFruit",{Title="Auto Fruit & Special",Default=false}):OnChanged(function() selectedStats.Power=Options.AutoStatFruit.Value;UpdateAutoStatsLoop();end);local function GetBossList() local list={};local seen={};pcall(function() local m_SpawnBossList=require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("SpawnBossList"));for bossName,_ in pairs(m_SpawnBossList) do if  not seen[bossName] then seen[bossName]=true;table.insert(list,tostring(bossName));end end end);table.sort(list);if ( #list==0) then table.insert(list,"(No Bosses Configured)");end return list;end local bossList=GetBossList();local selectedSummonBoss=bossList[1] or "" ;local selectedFarmBossList={};local autoBossSummonLoop=nil;local autoBossFarmLoop=nil;Tabs.Boss:AddDropdown("BossSummonSelect",{Title="Select Boss to Summon",Values=bossList,Multi=false,Default=1}):OnChanged(function(Value) selectedSummonBoss=Value;end);local function IsBossAlive(bossName) local targetNorm=string.lower(string.gsub(bossName," ",""));for _,v in ipairs(workspace:GetChildren()) do if (v:IsA("Model") and v:FindFirstChild("Humanoid") and (v.Humanoid.Health>0)) then local vNorm=string.lower(string.gsub(v.Name," ",""));if ((vNorm==targetNorm) or string.find(vNorm,targetNorm,1,true)) then return true;end end end local npcBoss=workspace:FindFirstChild("NpcBoss");if npcBoss then for _,v in ipairs(npcBoss:GetChildren()) do if (v:IsA("Model") and v:FindFirstChild("Humanoid") and (v.Humanoid.Health>0)) then local vNorm=string.lower(string.gsub(v.Name," ",""));if ((vNorm==targetNorm) or string.find(vNorm,targetNorm,1,true)) then return true;end end end end return false;end Tabs.Boss:AddToggle("AutoBossSummon",{Title="Auto Summon Boss",Description="ตรวจจับและเสกบอสทันทีหลังบอสตาย (ไม่สแปมตอนบอสมีชีวิต)",Default=false}):OnChanged(function() if Options.AutoBossSummon.Value then if autoBossSummonLoop then return;end autoBossSummonLoop=task.spawn(function() local NetworkEvent=ReplicatedStorage:WaitForChild("Modules"):WaitForChild("NetworkFramework"):WaitForChild("NetworkEvent");while Options.AutoBossSummon.Value do local name=selectedSummonBoss;if (name and (name~="") and (name~="(No Bosses Configured)")) then local alive=false;pcall(function() alive=IsBossAlive(name);end);if  not alive then pcall(function() NetworkEvent:FireServer("fire",nil,"SummonBoss",name);end);task.wait(0.5);else task.wait(0.2);end else task.wait(1);end end end);elseif autoBossSummonLoop then task.cancel(autoBossSummonLoop);autoBossSummonLoop=nil;end end);Tabs.Boss:AddDropdown("BossFarmSelect",{Title="Select Boss(es) to Farm",Description="เลือกบอสที่ต้องการวาร์ปไปตี (เลือกได้หลายตัว)",Values=bossList,Multi=true,Default={}}):OnChanged(function(Value) selectedFarmBossList={};for bossName,isSelected in pairs(Value) do if isSelected then table.insert(selectedFarmBossList,bossName);end end end);local function FindBossInWorkspace(bossName) local targetNorm=string.lower(string.gsub(bossName," ",""));for _,v in ipairs(workspace:GetDescendants()) do if (v:IsA("Model") and v:FindFirstChild("Humanoid") and (v.Humanoid.Health>0) and v:FindFirstChild("HumanoidRootPart") and  not Players:GetPlayerFromCharacter(v)) then local vNorm=string.lower(string.gsub(v.Name," ",""));if ((vNorm==targetNorm) or string.find(vNorm,targetNorm,1,true)) then return v;end end end return nil;end Tabs.Boss:AddToggle("AutoBossFarm",{Title="Auto Boss Farm",Description="เปิดระบบออโต้ฟาร์มบอสที่เลือก (วาร์ปและตี)",Default=false}):OnChanged(function() if Options.AutoBossFarm.Value then if autoBossFarmLoop then return;end autoBossFarmLoop=task.spawn(function() local bossIndex=1;while Options.AutoBossFarm.Value do if ( #selectedFarmBossList==0) then task.wait(1);continue;end local bossName=selectedFarmBossList[bossIndex];local targetBoss=FindBossInWorkspace(bossName);if (targetBoss and targetBoss:FindFirstChild("HumanoidRootPart")) then local targetHRP=targetBoss.HumanoidRootPart;local heartbeatConn;heartbeatConn=RunService.Heartbeat:Connect(function() if ( not Options.AutoBossFarm.Value or  not targetBoss.Parent or  not targetBoss:FindFirstChild("Humanoid") or (targetBoss.Humanoid.Health<=0)) then heartbeatConn:Disconnect();return;end local c=GetCharacter();if c then Character=c;end TweenTo(targetHRP);end);while Options.AutoBossFarm.Value and targetBoss.Parent and targetBoss:FindFirstChild("Humanoid") and (targetBoss.Humanoid.Health>0)  do task.wait(0.1);end if heartbeatConn then heartbeatConn:Disconnect();end bossIndex=(bossIndex% #selectedFarmBossList) + 1 ;else task.wait(2);bossIndex=(bossIndex% #selectedFarmBossList) + 1 ;end task.wait();end end);elseif autoBossFarmLoop then task.cancel(autoBossFarmLoop);autoBossFarmLoop=nil;end end);local teleportLocations={};local npcLocations={};local function ScanTeleportLocations() local list={};local seen={};teleportLocations={};for _,v in ipairs(workspace:GetDescendants()) do if (v:IsA("SpawnLocation") and  not seen[v.Name]) then seen[v.Name]=true;teleportLocations[v.Name]=v.CFrame;table.insert(list,v.Name);end end for _,v in ipairs(workspace:GetDescendants()) do if (v:IsA("BasePart") and  not seen[v.Name]) then local lower=string.lower(v.Name);if (string.find(lower,"spawn") or string.find(lower,"island") or string.find(lower,"town") or string.find(lower,"village")) then seen[v.Name]=true;teleportLocations[v.Name]=v.CFrame;table.insert(list,v.Name);end end end table.sort(list);if ( #list==0) then table.insert(list,"(No Locations Found)");end return list;end local function ScanNPCLocations() local list={};local seen={};npcLocations={};local npcFolders={workspace:FindFirstChild("NpcBoss"),workspace:FindFirstChild("NpcPrompt"),workspace:FindFirstChild("NpcQuest"),workspace:FindFirstChild("NpcRandomFruit"),workspace:FindFirstChild("NpcWeapon")};for _,folder in ipairs(npcFolders) do if folder then for _,npc in ipairs(folder:GetChildren()) do if (npc:IsA("Model") and  not seen[npc.Name]) then seen[npc.Name]=true;npcLocations[npc.Name]=npc:GetPivot();table.insert(list,npc.Name);end end end end for _,v in ipairs(workspace:GetChildren()) do if (v:IsA("Model") and  not seen[v.Name] and  not Players:GetPlayerFromCharacter(v)) then local lowerName=string.lower(v.Name);if string.find(lowerName,"npc") then seen[v.Name]=true;npcLocations[v.Name]=v:GetPivot();table.insert(list,v.Name);end end end table.sort(list);if ( #list==0) then table.insert(list,"(No NPCs Found)");end return list;end local teleportList=ScanTeleportLocations();local npcList=ScanNPCLocations();Tabs.Teleport:AddDropdown("TeleportSelect",{Title="Select Location",Description="เลือกจุดที่ต้องการ Teleport",Values=teleportList,Multi=false,Default=1});Tabs.Teleport:AddButton({Title="Teleport",Description="วาร์ปไปยังจุดที่เลือก",Callback=function() local sel=Options.TeleportSelect and Options.TeleportSelect.Value ;if ( not sel or (sel=="(No Locations Found)")) then Fluent:Notify({Title="Teleport",Content="Please select a location first.",Duration=3});return;end local loc=teleportLocations[sel];if (loc and Character and Character:FindFirstChild("HumanoidRootPart")) then Character.HumanoidRootPart.CFrame=loc + Vector3.new(0,5,0) ;Fluent:Notify({Title="Teleport",Content="Teleported to: "   .. sel ,Duration=3});end end});Tabs.Teleport:AddParagraph({Title="NPC Teleport",Content="วาร์ปไปยังตำแหน่งของ NPC ต่างๆ"});local NPCDropdown=Tabs.Teleport:AddDropdown("NPCSelect",{Title="Select NPC",Description="เลือก NPC ที่ต้องการวาร์ปไปหา",Values=npcList,Multi=false,Default=1});Tabs.Teleport:AddButton({Title="Teleport to NPC",Description="วาร์ปไปหา NPC ที่เลือก",Callback=function() local sel=Options.NPCSelect and Options.NPCSelect.Value ;if ( not sel or (sel=="(No NPCs Found)")) then Fluent:Notify({Title="Teleport NPC",Content="Please select an NPC first.",Duration=3});return;end local loc=npcLocations[sel];if (loc and Character and Character:FindFirstChild("HumanoidRootPart")) then Character.HumanoidRootPart.CFrame=loc + Vector3.new(0,5,0) ;Fluent:Notify({Title="Teleport NPC",Content="Teleported to NPC: "   .. sel ,Duration=3});end end});Tabs.Teleport:AddParagraph({Title="Custom Teleport",Content="ใส่พิกัดเพื่อวาร์ปไปยังตำแหน่งที่ตั้งไว้"});Tabs.Teleport:AddInput("TeleportX",{Title="X",Default="0",Numeric=true,Placeholder="Coordinate X"});Tabs.Teleport:AddInput("TeleportY",{Title="Y",Default="0",Numeric=true,Placeholder="Coordinate Y"});Tabs.Teleport:AddInput("TeleportZ",{Title="Z",Default="0",Numeric=true,Placeholder="Coordinate Z"});Tabs.Teleport:AddButton({Title="Teleport to Coordinates",Callback=function() local x=tonumber(Options.TeleportX.Value) or 0 ;local y=tonumber(Options.TeleportY.Value) or 0 ;local z=tonumber(Options.TeleportZ.Value) or 0 ;if (Character and Character:FindFirstChild("HumanoidRootPart")) then Character.HumanoidRootPart.CFrame=CFrame.new(x,y,z);Fluent:Notify({Title="Teleport",Content=("Teleported to: (%.1f, %.1f, %.1f)"):format(x,y,z),Duration=3});end end});Tabs.Teleport:AddParagraph({Title="Utility",Content="เครื่องมือจัดการข้อมูลแผนที่"});Tabs.Teleport:AddButton({Title="Refresh Teleport Lists",Description="โหลดจุดวาร์ปและ NPC ใหม่ทั้งหมดในเซิร์ฟเวอร์",Callback=function() teleportList=ScanTeleportLocations();Options.TeleportSelect.Values=teleportList;Options.TeleportSelect:SetValue(teleportList[1]);npcList=ScanNPCLocations();NPCDropdown.Values=npcList;NPCDropdown:SetValue(npcList[1]);Fluent:Notify({Title="Refresh Complete",Content="Locations & NPCs updated.",Duration=3});end});local autoRollLoop=nil;local autoGuaranteeLoop=nil;local function GetGuaranteeItems() local list={};pcall(function() local m=require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("GaranteeRandomItem"));for name,_ in pairs(m) do table.insert(list,name);end end);table.sort(list);if ( #list==0) then list={"Aura Rainbow","Magic Evolution","Book of Busoshoku Haki"};end return list;end local guaranteeItems=GetGuaranteeItems();Tabs.Misc:AddParagraph({Title="Box Gacha (ระบบสุ่มกล่อง)",Content="ระบบสุ่มกล่องทั่วไป และกล่องแบบการันตีไอเทม"});local GachaDropdown=Tabs.Misc:AddDropdown("GachaTypeSelect",{Title="Gacha Type (เลือกประเภทสุ่ม)",Description="เลือกจำนวนกล่องที่ต้องการสุ่ม",Values={"x5","x10","x15"},Multi=false,Default=1});Tabs.Misc:AddToggle("AutoRollGacha",{Title="Auto Roll Box (สุ่มกล่องออโต้)",Description="สุ่มกล่องทั่วไปแบบวนลูป",Default=false}):OnChanged(function() if Options.AutoRollGacha.Value then if autoRollLoop then return;end autoRollLoop=task.spawn(function() local NetworkEvent=ReplicatedStorage:WaitForChild("Modules"):WaitForChild("NetworkFramework"):WaitForChild("NetworkEvent");while Options.AutoRollGacha.Value do pcall(function() NetworkEvent:FireServer("fire",nil,"RandomItem",Options.GachaTypeSelect.Value);end);task.wait(0.5);end end);elseif autoRollLoop then task.cancel(autoRollLoop);autoRollLoop=nil;end end);local GuaranteeDropdown=Tabs.Misc:AddDropdown("GuaranteeItemSelect",{Title="Guaranteed Item (เลือกไอเทมการันตี)",Description="เลือกไอเทมการันตีที่ต้องการกดซื้อออโต้",Values=guaranteeItems,Multi=false,Default=1});Tabs.Misc:AddToggle("AutoBuyGuarantee",{Title="Auto Buy Guaranteed (ซื้อการันตีออโต้)",Description="ซื้อไอเทมการันตีที่เลือกแบบวนลูป",Default=false}):OnChanged(function() if Options.AutoBuyGuarantee.Value then if autoGuaranteeLoop then return;end autoGuaranteeLoop=task.spawn(function() local NetworkEvent=ReplicatedStorage:WaitForChild("Modules"):WaitForChild("NetworkFramework"):WaitForChild("NetworkEvent");while Options.AutoBuyGuarantee.Value do pcall(function() NetworkEvent:FireServer("fire",nil,"BuyGaranteeRandomItem",Options.GuaranteeItemSelect.Value);end);task.wait(0.5);end end);elseif autoGuaranteeLoop then task.cancel(autoGuaranteeLoop);autoGuaranteeLoop=nil;end end);Tabs.Misc:AddParagraph({Title="Open UI Windows (เปิดหน้าต่าง UI)",Content="เลือกหน้าต่าง UI ที่ต้องการเปิดใช้งานในเกม"});local UIList={["Inventory (กระเป๋าเก็บของ)"]="Frame_Inventory",["Character Stats (ข้อมูลตัวละคร)"]="Frame_Stats",["Shop (ร้านค้า)"]="Frame_Shop",["Class Ability (พลังระดับคลาส)"]="Frame_AbilityClass",["Box Gacha (สุ่มกล่องสุ่มไอเทม)"]="Frame_RandomItem",["Summon Boss (แท่นเสกบอส)"]="Frame_SummonBoss",["In-game Teleport (หน้าต่างวาร์ปดั้งเดิม)"]="Frame_Teleport",["Game Settings (ตั้งค่าดั้งเดิม)"]="Frame_Setting",["Trade Window (หน้าต่างเทรด)"]="Frame_Trade",["Crew/Ally (ลูกเรือ/พันธมิตร)"]="Frame_Ally"};local uiNames={};for displayName,_ in pairs(UIList) do table.insert(uiNames,displayName);end table.sort(uiNames);Tabs.Misc:AddDropdown("UIWindowSelect",{Title="Select UI Window (เลือกหน้าต่าง UI)",Description="เลือกหน้าต่าง UI ที่ต้องการเปิด",Values=uiNames,Multi=false,Default=1});Tabs.Misc:AddButton({Title="Open Selected UI (เปิดหน้าต่าง)",Description="เปิดใช้งานหน้าต่าง UI ที่เลือกขึ้นมาบนหน้าจอ",Callback=function() local sel=Options.UIWindowSelect and Options.UIWindowSelect.Value ;local frameName=UIList[sel];if frameName then pcall(function() local HUD=LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("HUD");local Main=HUD:WaitForChild("Main");local targetFrame=Main:FindFirstChild(frameName);if targetFrame then if getgenv().OpenGui then getgenv().OpenGui(targetFrame);elseif _G.OpenGui then _G.OpenGui(targetFrame);else targetFrame.Visible=true;end else Fluent:Notify({Title="Open UI",Content="Could not find UI frame: "   .. frameName ,Duration=3});end end);end end});Tabs.Misc:AddParagraph({Title="Character & General",Content="การตั้งค่าตัวละครและฟังก์ชันทั่วไป"});Tabs.Misc:AddToggle("InfiniteJump",{Title="Infinite Jump",Description="เปิดเพื่อให้กระโดดกลางอากาศได้ไม่จำกัด",Default=false}):OnChanged(function() if Options.InfiniteJump.Value then UserInputService.JumpRequest:Connect(function() if Options.InfiniteJump.Value then local c=LocalPlayer.Character;local h=c and c:FindFirstChildOfClass("Humanoid") ;if h then h:ChangeState(Enum.HumanoidStateType.Jumping);end end end);end end);Tabs.Misc:AddToggle("AntiAFK",{Title="Anti AFK",Description="ป้องกันเกมดีดออกเวลาไม่ได้ขยับตัว",Default=true}):OnChanged(function() if Options.AntiAFK.Value then local VirtualUser=game:GetService("VirtualUser");LocalPlayer.Idled:Connect(function() if Options.AntiAFK.Value then VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame);task.wait(1);VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame);end end);end end);Tabs.Misc:AddButton({Title="Rejoin Server",Description="ออกเกมและกลับเข้าเซิร์ฟเดิมทันที",Callback=function() game:GetService("TeleportService"):Teleport(game.PlaceId,LocalPlayer);end});Tabs.Misc:AddButton({Title="Copy Current Position",Description="คัดลอกพิกัดตำแหน่งปัจจุบันเข้า Clipboard",Callback=function() local hrp=GetHRP();if hrp then local pos=hrp.Position;local str=("%.2f, %.2f, %.2f"):format(pos.X,pos.Y,pos.Z);setclipboard(str);Fluent:Notify({Title="Position Copied",Content=str,Duration=4});end end});Tabs.Misc:AddSlider("WalkSpeed",{Title="Walk Speed",Description="ปรับความเร็วการวิ่งของตัวละคร (ค่าดั้งเดิม = 16)",Default=16,Min=1,Max=250,Rounding=1,Callback=function(v) local c=LocalPlayer.Character;local h=c and c:FindFirstChildOfClass("Humanoid") ;if h then h.WalkSpeed=v;end end});Tabs.Misc:AddSlider("JumpPower",{Title="Jump Power",Description="ปรับระยะกระโดดของตัวละคร (ค่าดั้งเดิม = 50)",Default=50,Min=1,Max=500,Rounding=1,Callback=function(v) local c=LocalPlayer.Character;local h=c and c:FindFirstChildOfClass("Humanoid") ;if h then h.JumpPower=v;end end});SaveManager:SetLibrary(Fluent);InterfaceManager:SetLibrary(Fluent);InterfaceManager:BuildInterfaceSection(Tabs.Settings);SaveManager:BuildConfigSection(Tabs.Settings);SaveManager:SetFolder("NxHub");SaveManager:LoadAutoloadConfig();InterfaceManager:SetFolder("NxHub");local CoreGui=game:GetService("CoreGui");local TweenService=game:GetService("TweenService");if CoreGui:FindFirstChild("NxHubToggleButtonGui") then pcall(function() CoreGui.NxHubToggleButtonGui:Destroy();end);end local ToggleGui=Instance.new("ScreenGui");ToggleGui.Name="NxHubToggleButtonGui";ToggleGui.Parent=CoreGui;ToggleGui.ResetOnSpawn=false;local logoAsset="rbxassetid://6031243547";local logoName="NxHubLogo.jpg";local githubUrl="https://cdn.jsdelivr.net/gh/NxHup/Nx-Hub@main/f5756ce8-6683-4be4-9845-29f066e64369.jpg";if (isfile and writefile and game.HttpGet) then if  not isfile(logoName) then local success,imageData=pcall(function() return game:HttpGet(githubUrl);end);if (success and imageData and ( #imageData>1000) and  not string.find(imageData,"Too Many Requests")) then writefile(logoName,imageData);print("[Nx Hub] Logo downloaded successfully!");else warn("[Nx Hub] Failed to download logo (invalid data or rate limited):",tostring(success));end end if isfile(logoName) then local success,asset=pcall(function() return getcustomasset(logoName);end);if (success and asset) then logoAsset=asset;print("[Nx Hub] Loaded custom asset logo from:",logoName);else warn("[Nx Hub] Failed to load custom asset logo:",tostring(success),tostring(asset));end end end local ToggleButton=Instance.new("ImageButton");ToggleButton.Name="ToggleButton";ToggleButton.Parent=ToggleGui;ToggleButton.Size=UDim2.fromOffset(60,60);ToggleButton.Position=UDim2.new(0.02,0,0.2,0);ToggleButton.BackgroundColor3=Color3.fromRGB(15,15,15);ToggleButton.BorderSizePixel=0;ToggleButton.Image=logoAsset;ToggleButton.ScaleType=Enum.ScaleType.Fit;ToggleButton.AutoButtonColor=false;local Corner=Instance.new("UICorner");Corner.CornerRadius=UDim.new(0,8);Corner.Parent=ToggleButton;local Stroke=Instance.new("UIStroke");Stroke.Color=Color3.fromRGB(0,180,255);Stroke.Thickness=2;Stroke.Parent=ToggleButton;local dragging=false;local dragInput,dragStart,startPos;local function update(input) local delta=input.Position-dragStart ;local targetPos=UDim2.new(startPos.X.Scale,startPos.X.Offset + delta.X ,startPos.Y.Scale,startPos.Y.Offset + delta.Y );TweenService:Create(ToggleButton,TweenInfo.new(0.1,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Position=targetPos}):Play();end ToggleButton.InputBegan:Connect(function(input) if ((input.UserInputType==Enum.UserInputType.MouseButton1) or (input.UserInputType==Enum.UserInputType.Touch)) then dragging=true;dragStart=input.Position;startPos=ToggleButton.Position;input.Changed:Connect(function() if (input.UserInputState==Enum.UserInputState.End) then dragging=false;end end);end end);ToggleButton.InputChanged:Connect(function(input) if ((input.UserInputType==Enum.UserInputType.MouseMovement) or (input.UserInputType==Enum.UserInputType.Touch)) then dragInput=input;end end);game:GetService("UserInputService").InputChanged:Connect(function(input) if ((input==dragInput) and dragging) then update(input);end end);ToggleButton.MouseEnter:Connect(function() TweenService:Create(ToggleButton,TweenInfo.new(0.2),{BackgroundColor3=Color3.fromRGB(30,30,30),Size=UDim2.fromOffset(64,64)}):Play();end);ToggleButton.MouseLeave:Connect(function() TweenService:Create(ToggleButton,TweenInfo.new(0.2),{BackgroundColor3=Color3.fromRGB(15,15,15),Size=UDim2.fromOffset(60,60)}):Play();end);ToggleButton.MouseButton1Click:Connect(function() ToggleButton:TweenSize(UDim2.fromOffset(52,52),"Out","Quad",0.08,true,function() ToggleButton:TweenSize(UDim2.fromOffset(60,60),"Out","Quad",0.08,true);end);if Window then Window:Minimize();end end);Window:SelectTab(1);Fluent:Notify({Title="Nx Hub",Content="Ready! Press RCtrl to minimize.",Duration=5});getgenv().NxHubLoaded=true;getgenv().NxHubUnload=function() if autoHoldConn then pcall(function() autoHoldConn:Disconnect();end);autoHoldConn=nil;end local tasksToCancel={autoFarmLoop,autoFarmLevelLoop,autoFarmKillOnlyLoop,autoFarmEventLoop,autoBossSummonLoop,autoBossFarmLoop,autoAttackLoop,autoHakiLoop,autoStatsLoop,autoRollLoop,autoGuaranteeLoop,skillLoop};for _,t in ipairs(tasksToCancel) do if t then pcall(function() task.cancel(t);end);end end if Window then pcall(function() Window:Destroy();end);end if ToggleGui then pcall(function() ToggleGui:Destroy();end);end getgenv().NxHubLoaded=nil;getgenv().NxHubUnload=nil;end; end
+if _0x0008._0x0009 ~= 119091355492870 then
+local _0x000a = _0x0008:_0x000b(string.char(80, 108, 97, 121, 101, 114, 115))
+if _0x000a._0x000c then
+pcall(function()
+_0x000a._0x000c:_0x000d(string.char(78, 120, 32, 72, 117, 98, 58, 32, 3626, 3588, 3619, 3636, 3611, 3605, 3660, 3609, 3637, 3657, 3619, 3629, 3591, 3619, 3633, 3610, 3648, 3593, 3614, 3634, 3632, 3649, 3617, 3614, 32, 82, 111, 99, 107, 32, 70, 114, 117, 105, 116, 32, 3648, 3607, 3656, 3634, 3609, 3633, 3657, 3609, 33, 32, 40, 83, 117, 112, 112, 111, 114, 116, 101, 100, 32, 82, 111, 99, 107, 32, 70, 114, 117, 105, 116, 32, 111, 110, 108, 121, 33, 41))
+end)
+end
+return
+end
+if _0x0012()._0x0013 and _0x0012()._0x0014 then
+pcall(_0x0012()._0x0014)
+_0x0015._0x0016(0.2)
+end
+local _0x0017, _0x0018, _0x0019
+local _0x001c = {
+_0x0017 = string.char(70, 105, 108, 101, 68, 117, 109, 112, 101, 114, 47, 70, 108, 117, 101, 110, 116, 46, 108, 117, 97),
+_0x0018 = string.char(70, 105, 108, 101, 68, 117, 109, 112, 101, 114, 47, 83, 97, 118, 101, 77, 97, 110, 97, 103, 101, 114, 46, 108, 117, 97),
+_0x0019 = string.char(70, 105, 108, 101, 68, 117, 109, 112, 101, 114, 47, 73, 110, 116, 101, 114, 102, 97, 99, 101, 77, 97, 110, 97, 103, 101, 114, 46, 108, 117, 97)
+}
+local _0x001d = false
+pcall(function()
+if _0x001e and _0x001e(_0x001c._0x0017) and _0x001e(_0x001c._0x0018) and _0x001e(_0x001c._0x0019) then
+_0x001d = true
+end
+end)
+if _0x001d then
+pcall(function()
+_0x0017 = _0x001f(_0x0020(_0x001c._0x0017))()
+_0x0018 = _0x001f(_0x0020(_0x001c._0x0018))()
+_0x0019 = _0x001f(_0x0020(_0x001c._0x0019))()
+print(string.char(91, 78, 120, 32, 72, 117, 98, 93, 32, 76, 111, 97, 100, 101, 100, 32, 85, 73, 32, 76, 105, 98, 114, 97, 114, 121, 32, 102, 114, 111, 109, 32, 108, 111, 99, 97, 108, 32, 119, 111, 114, 107, 115, 112, 97, 99, 101, 32, 99, 97, 99, 104, 101, 46))
+end)
+end
+if not _0x0017 then
+pcall(function()
+local _0x0025 = _0x0008:_0x0026(string.char(104, 116, 116, 112, 115, 58, 47, 47, 99, 100, 110, 46, 106, 115, 100, 101, 108, 105, 118, 114, 46, 110, 101, 116, 47, 103, 104, 47, 78, 120, 72, 117, 112, 47, 78, 120, 45, 72, 117, 98, 64, 109, 97, 105, 110, 47, 70, 108, 117, 101, 110, 116, 46, 108, 117, 97))
+if _0x0025 and #_0x0025 > 5000 and not string.find(_0x0025, string.char(84, 111, 111, 32, 77, 97, 110, 121, 32, 82, 101, 113, 117, 101, 115, 116, 115)) then
+_0x0017 = _0x001f(_0x0025)()
+_0x0018 = _0x001f(_0x0008:_0x0026(string.char(104, 116, 116, 112, 115, 58, 47, 47, 99, 100, 110, 46, 106, 115, 100, 101, 108, 105, 118, 114, 46, 110, 101, 116, 47, 103, 104, 47, 78, 120, 72, 117, 112, 47, 78, 120, 45, 72, 117, 98, 64, 109, 97, 105, 110, 47, 83, 97, 118, 101, 77, 97, 110, 97, 103, 101, 114, 46, 108, 117, 97)))()
+_0x0019 = _0x001f(_0x0008:_0x0026(string.char(104, 116, 116, 112, 115, 58, 47, 47, 99, 100, 110, 46, 106, 115, 100, 101, 108, 105, 118, 114, 46, 110, 101, 116, 47, 103, 104, 47, 78, 120, 72, 117, 112, 47, 78, 120, 45, 72, 117, 98, 64, 109, 97, 105, 110, 47, 73, 110, 116, 101, 114, 102, 97, 99, 101, 77, 97, 110, 97, 103, 101, 114, 46, 108, 117, 97)))()
+print(string.char(91, 78, 120, 32, 72, 117, 98, 93, 32, 76, 111, 97, 100, 101, 100, 32, 85, 73, 32, 76, 105, 98, 114, 97, 114, 121, 32, 118, 105, 97, 32, 106, 115, 68, 101, 108, 105, 118, 114, 32, 67, 68, 78, 46))
+end
+end)
+end
+if not _0x0017 then
+pcall(function()
+_0x0017           = _0x001f(_0x0008:_0x0026(string.char(104, 116, 116, 112, 115, 58, 47, 47, 103, 105, 116, 104, 117, 98, 46, 99, 111, 109, 47, 100, 97, 119, 105, 100, 45, 115, 99, 114, 105, 112, 116, 115, 47, 70, 108, 117, 101, 110, 116, 47, 114, 101, 108, 101, 97, 115, 101, 115, 47, 108, 97, 116, 101, 115, 116, 47, 100, 111, 119, 110, 108, 111, 97, 100, 47, 109, 97, 105, 110, 46, 108, 117, 97)))()
+_0x0018      = _0x001f(_0x0008:_0x0026(string.char(104, 116, 116, 112, 115, 58, 47, 47, 114, 97, 119, 46, 103, 105, 116, 104, 117, 98, 117, 115, 101, 114, 99, 111, 110, 116, 101, 110, 116, 46, 99, 111, 109, 47, 100, 97, 119, 105, 100, 45, 115, 99, 114, 105, 112, 116, 115, 47, 70, 108, 117, 101, 110, 116, 47, 109, 97, 115, 116, 101, 114, 47, 65, 100, 100, 111, 110, 115, 47, 83, 97, 118, 101, 77, 97, 110, 97, 103, 101, 114, 46, 108, 117, 97)))()
+_0x0019 = _0x001f(_0x0008:_0x0026(string.char(104, 116, 116, 112, 115, 58, 47, 47, 114, 97, 119, 46, 103, 105, 116, 104, 117, 98, 117, 115, 101, 114, 99, 111, 110, 116, 101, 110, 116, 46, 99, 111, 109, 47, 100, 97, 119, 105, 100, 45, 115, 99, 114, 105, 112, 116, 115, 47, 70, 108, 117, 101, 110, 116, 47, 109, 97, 115, 116, 101, 114, 47, 65, 100, 100, 111, 110, 115, 47, 73, 110, 116, 101, 114, 102, 97, 99, 101, 77, 97, 110, 97, 103, 101, 114, 46, 108, 117, 97)))()
+print(string.char(91, 78, 120, 32, 72, 117, 98, 93, 32, 76, 111, 97, 100, 101, 100, 32, 85, 73, 32, 76, 105, 98, 114, 97, 114, 121, 32, 118, 105, 97, 32, 111, 102, 102, 105, 99, 105, 97, 108, 32, 71, 105, 116, 72, 117, 98, 32, 102, 97, 108, 108, 98, 97, 99, 107, 46))
+end)
+end
+local _0x000a           = _0x0008:_0x000b(string.char(80, 108, 97, 121, 101, 114, 115))
+local _0x0028 = _0x0008:_0x000b(string.char(82, 101, 112, 108, 105, 99, 97, 116, 101, 100, 83, 116, 111, 114, 97, 103, 101))
+local _0x0029  = _0x0008:_0x000b(string.char(85, 115, 101, 114, 73, 110, 112, 117, 116, 83, 101, 114, 118, 105, 99, 101))
+local _0x002a        = _0x0008:_0x000b(string.char(82, 117, 110, 83, 101, 114, 118, 105, 99, 101))
+local _0x002b       = _0x0008:_0x000b(string.char(72, 116, 116, 112, 83, 101, 114, 118, 105, 99, 101))
+local _0x002c      = _0x0008:_0x000b(string.char(84, 119, 101, 101, 110, 83, 101, 114, 118, 105, 99, 101))
+local _0x000c     = _0x000a._0x000c
+local function _0x002d() return _0x000c._0x002e end
+local function _0x002f() local _0x0030 = _0x002d(); return _0x0030 and _0x0030:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) end
+local _0x002e = _0x000c._0x002e or _0x000c._0x0032:_0x0033()
+_0x000c._0x0032:_0x0034(function(_0x0030) _0x002e = _0x0030 end)
+local _0x0035         = _0x0028:_0x0036(string.char(82, 101, 109, 111, 116, 101, 115))
+local _0x0037          = _0x0035:_0x0036(string.char(65, 99, 116, 105, 111, 110))
+local _0x0038 = _0x0035:_0x0036(string.char(73, 110, 118, 101, 110, 116, 111, 114, 121))
+repeat _0x0015._0x0016() until _0x000c:_0x0039(string.char(76, 111, 97, 100, 101, 100))
+local function _0x003b(_0x003c) return _0x000c:_0x0039(_0x003c) end
+local function _0x003d(_0x003e)
+_0x003e = _0x003e or 0
+local _0x003f = {"",string.char(75),string.char(77),string.char(66),string.char(84),string.char(81, 65)}
+if _0x003e < 1000 then return tostring(math.floor(_0x003e)) end
+local _0x0040 = math.min(math.floor(math._0x0041(_0x003e)/3), #_0x003f-1)
+return string.format(string.char(37, 46, 50, 102), _0x003e/(10^(_0x0040*3))):gsub(string.char(37, 46, 63, 48, 43, 36),"") .. _0x003f[_0x0040+1]
+end
+local function _0x0042()
+local _0x0030 = _0x000c._0x002e
+if not _0x0030 then return nil end
+for _0x0043, _0x0044 in _0x0030:_0x0045() do if _0x0044:_0x0046(string.char(84, 111, 111, 108)) then return _0x0044._0x0047 end end
+return nil
+end
+local function _0x0048()
+local _0x0049, _0x004a = {}, {}
+local _0x0030 = _0x000c._0x002e
+if _0x0030 then
+for _0x0043, _0x0044 in _0x0030:_0x0045() do
+if _0x0044:_0x0046(string.char(84, 111, 111, 108)) and not _0x004a[_0x0044._0x0047] then
+_0x004a[_0x0044._0x0047] = true; table.insert(_0x0049, _0x0044._0x0047)
+end
+end
+end
+for _0x0043, _0x0044 in _0x000c._0x004b:_0x0045() do
+if _0x0044:_0x0046(string.char(84, 111, 111, 108)) and not _0x004a[_0x0044._0x0047] then
+_0x004a[_0x0044._0x0047] = true; table.insert(_0x0049, _0x0044._0x0047)
+end
+end
+table.sort(_0x0049)
+return _0x0049
+end
+local _0x004c = _0x0017:_0x004d({
+_0x004e       = string.char(78, 120, 32, 72, 117, 98),
+_0x004f    = string.char(118, 49, 46, 48),
+_0x0050    = 155,
+_0x0051        = _0x0052._0x0053(560, 480),
+_0x0054     = true,
+_0x0055       = string.char(68, 97, 114, 107),
+_0x0056 = _0x0057._0x0058._0x0059
+})
+local _0x005a = {
+_0x0002     = _0x004c:_0x005b({ _0x004e = string.char(77, 97, 105, 110),      _0x005c = string.char(104, 111, 109, 101) }),
+_0x005d = _0x004c:_0x005b({ _0x004e = string.char(65, 117, 116, 111, 32, 70, 97, 114, 109), _0x005c = string.char(115, 119, 111, 114, 100, 115) }),
+_0x005e     = _0x004c:_0x005b({ _0x004e = string.char(66, 111, 115, 115),      _0x005c = string.char(115, 107, 117, 108, 108) }),
+_0x005f = _0x004c:_0x005b({ _0x004e = string.char(84, 101, 108, 101, 112, 111, 114, 116),  _0x005c = string.char(109, 97, 112, 45, 112, 105, 110) }),
+_0x0060     = _0x004c:_0x005b({ _0x004e = string.char(77, 105, 115, 99),      _0x005c = string.char(98, 111, 120) }),
+_0x0061 = _0x004c:_0x005b({ _0x004e = string.char(83, 101, 116, 116, 105, 110, 103, 115),  _0x005c = string.char(115, 101, 116, 116, 105, 110, 103, 115) }),
+}
+local _0x0062 = _0x0017._0x0062
+_0x0017:_0x0063({ _0x004e = string.char(78, 120, 32, 72, 117, 98), _0x0064 = string.char(83, 99, 114, 105, 112, 116, 32, 108, 111, 97, 100, 101, 100, 46), _0x0065 = 4 })
+local _0x0067 = ""
+local _0x0068   = nil
+local _0x0069      = nil
+local _0x006a = nil
+local function _0x006b()
+local char = _0x000c._0x002e
+local _0x006c = char and char:_0x006d(string.char(72, 117, 109, 97, 110, 111, 105, 100))
+if not _0x006c then return end
+local _0x006e = char:_0x006d(string.char(84, 111, 111, 108))
+if _0x006e then
+_0x0067 = _0x006e._0x0047
+return
+end
+local _0x006f = nil
+if _0x0067 and _0x0067 ~= "" and _0x0067 ~= string.char(40, 78, 111, 32, 84, 111, 111, 108, 32, 70, 111, 117, 110, 100, 41) then
+_0x006f = _0x000c._0x004b:_0x0031(_0x0067)
+end
+if not _0x006f then
+for _0x0043, _0x0044 in ipairs(_0x000c._0x004b:_0x0045()) do
+if _0x0044:_0x0046(string.char(84, 111, 111, 108)) then
+_0x006f = _0x0044
+_0x0067 = _0x0044._0x0047
+break
+end
+end
+end
+if _0x006f then
+pcall(function() _0x006c:_0x0070(_0x006f) end)
+end
+end
+local function _0x0071()
+local _0x0072 = false
+pcall(function()
+if _0x0062._0x0073 and _0x0062._0x0073._0x0074 then _0x0072 = true end
+end)
+if _0x0072 then
+if not _0x006a then
+_0x006a = _0x0015._0x0075(function()
+local _0x0037 = _0x0028:_0x0036(string.char(82, 101, 109, 111, 116, 101, 115)):_0x0036(string.char(65, 99, 116, 105, 111, 110))
+while true do
+_0x006b()
+local _0x0030 = _0x000c._0x002e
+if _0x0030 then
+local _0x0076 = _0x0030:_0x006d(string.char(84, 111, 111, 108))
+if _0x0076 then
+pcall(function() _0x0076:_0x0077() end)
+if _0x0037 then
+pcall(function() _0x0037:_0x0078(_0x0076._0x0047, string.char(104, 105, 116)) end)
+end
+end
+end
+_0x0015._0x0016(0.1)
+end
+end)
+end
+else
+if _0x006a then
+_0x0015._0x0079(_0x006a)
+_0x006a = nil
+end
+end
+end
+_0x005a._0x0002:_0x007c({
+_0x004e       = string.char(83, 104, 111, 119, 32, 83, 116, 97, 116, 115),
+_0x007d = string.char(3649, 3626, 3604, 3591, 3586, 3657, 3629, 3617, 3641, 3621, 3605, 3633, 3623, 3621, 3632, 3588, 3619),
+_0x007e    = function()
+local _0x007f = _0x003b(string.char(76, 101, 118, 101, 108)) or string.char(63)
+local exp = _0x003b(string.char(69, 120, 112)) or 0
+local _0x0080 = _0x003b(string.char(77, 97, 120, 69, 120, 112)) or 1
+local _0x0081 = _0x003b(string.char(66, 101, 108, 105)) or 0
+local _0x0082 = _0x003b(string.char(68, 105, 97, 109, 111, 110, 100)) or 0
+local _0x0083 = _0x003b(string.char(85, 115, 101, 67, 108, 97, 115, 115)) or string.char(78, 111, 110, 101)
+_0x0017:_0x0063({
+_0x004e   = string.char(80, 108, 97, 121, 101, 114, 32, 83, 116, 97, 116, 115),
+_0x0064 = (string.char(76, 101, 118, 101, 108, 58, 32, 37, 115, 32, 124, 32, 69, 88, 80, 58, 32, 37, 115, 32, 47, 32, 37, 115, 10, 66, 101, 108, 105, 58, 32, 37, 115, 32, 124, 32, 68, 105, 97, 109, 111, 110, 100, 58, 32, 37, 115, 10, 67, 108, 97, 115, 115, 58, 32, 37, 115)):format(
+tostring(_0x007f),
+_0x003d(exp), _0x003d(_0x0080),
+_0x003d(_0x0081), _0x003d(_0x0082),
+tostring(_0x0083 == string.char(91, 93) and string.char(78, 111, 110, 101) or _0x0083)
+),
+_0x0065 = 8
+})
+end
+})
+local _0x0086 = 0
+while #_0x0048() == 0 and _0x0086 < 10 do
+_0x0015._0x0016(0.3); _0x0086 = _0x0086 + 1
+end
+local _0x0087 = _0x0048()
+if #_0x0087 == 0 then _0x0087 = {string.char(40, 78, 111, 32, 84, 111, 111, 108, 32, 70, 111, 117, 110, 100, 41)} end
+_0x0067 = _0x0087[1]
+local _0x0088 = _0x005a._0x0002:_0x0089(string.char(87, 101, 97, 112, 111, 110, 83, 101, 108, 101, 99, 116), {
+_0x004e       = string.char(83, 101, 108, 101, 99, 116, 32, 87, 101, 97, 112, 111, 110),
+_0x007d = string.char(3648, 3621, 3639, 3629, 3585, 32, 87, 101, 97, 112, 111, 110, 32, 3592, 3634, 3585, 3586, 3629, 3591, 3651, 3609, 32, 66, 97, 99, 107, 112, 97, 99, 107),
+_0x008a      = _0x0087,
+_0x008b       = false,
+_0x008c     = 1,
+})
+_0x0088:_0x008d(function(_0x008e)
+_0x0067 = _0x008e
+end)
+_0x005a._0x0002:_0x007c({
+_0x004e       = string.char(82, 101, 102, 114, 101, 115, 104, 32, 66, 97, 99, 107, 112, 97, 99, 107),
+_0x007d = string.char(3650, 3627, 3621, 3604, 3619, 3634, 3618, 3585, 3634, 3619, 32, 87, 101, 97, 112, 111, 110, 32, 3651, 3609, 32, 66, 97, 99, 107, 112, 97, 99, 107, 32, 3651, 3627, 3617, 3656),
+_0x007e    = function()
+local _0x0049 = _0x0048()
+if #_0x0049 == 0 then
+_0x0017:_0x0063({ _0x004e = string.char(66, 97, 99, 107, 112, 97, 99, 107), _0x0064 = string.char(78, 111, 32, 116, 111, 111, 108, 32, 102, 111, 117, 110, 100, 32, 105, 110, 32, 98, 97, 99, 107, 112, 97, 99, 107, 46), _0x0065 = 3 })
+return
+end
+_0x0087   = _0x0049
+_0x0067 = _0x0049[1]
+_0x0088._0x008a = _0x0049
+_0x0088:_0x008f(_0x0049[1])
+_0x0017:_0x0063({
+_0x004e   = (string.char(66, 97, 99, 107, 112, 97, 99, 107, 32, 40, 37, 100, 32, 105, 116, 101, 109, 115, 41)):format(#_0x0049),
+_0x0064 = table.concat(_0x0049, string.char(10)),
+_0x0065 = 8
+})
+end
+})
+_0x005a._0x0002:_0x0090(string.char(65, 117, 116, 111, 72, 111, 108, 100), {
+_0x004e       = string.char(65, 117, 116, 111, 32, 72, 111, 108, 100, 32, 87, 101, 97, 112, 111, 110),
+_0x007d = string.char(3648, 3611, 3636, 3604, 3648, 3614, 3639, 3656, 3629, 3606, 3639, 3629, 32, 87, 101, 97, 112, 111, 110, 32, 3607, 3637, 3656, 3648, 3621, 3639, 3629, 3585, 3605, 3621, 3629, 3604, 3648, 3623, 3621, 3634),
+_0x008c     = false
+}):_0x008d(function()
+if _0x0062._0x0091._0x0074 then
+local _0x0092 = _0x0067
+if not _0x0092 or _0x0092 == "" or _0x0092 == string.char(40, 78, 111, 32, 84, 111, 111, 108, 32, 70, 111, 117, 110, 100, 41) then
+_0x0062._0x0091:_0x008f(false)
+_0x0017:_0x0063({ _0x004e = string.char(87, 101, 97, 112, 111, 110), _0x0064 = string.char(80, 108, 101, 97, 115, 101, 32, 115, 101, 108, 101, 99, 116, 32, 97, 32, 119, 101, 97, 112, 111, 110, 32, 102, 105, 114, 115, 116, 46), _0x0065 = 3 })
+return
+end
+local _0x0030 = _0x000c._0x002e
+local _0x0093 = _0x0030 and _0x0030:_0x006d(string.char(72, 117, 109, 97, 110, 111, 105, 100))
+if _0x0093 then
+local _0x0094 = _0x000c._0x004b:_0x0031(_0x0092)
+if _0x0094 then _0x0093:_0x0070(_0x0094) else _0x0038:_0x0078(_0x0092) end
+end
+_0x0017:_0x0063({ _0x004e = string.char(65, 117, 116, 111, 32, 72, 111, 108, 100), _0x0064 = string.char(72, 111, 108, 100, 105, 110, 103, 58, 32) .. _0x0092, _0x0065 = 3 })
+if _0x0068 then _0x0068:_0x0095() end
+_0x0068 = _0x002a._0x0096:_0x0034(function()
+if not _0x0062._0x0091._0x0074 then return end
+local _0x003e = _0x0067
+if not _0x003e or _0x003e == "" then return end
+local _0x0097 = _0x000c._0x002e
+local _0x0098 = _0x0097 and _0x0097:_0x006d(string.char(72, 117, 109, 97, 110, 111, 105, 100))
+if not _0x0097 or not _0x0098 then return end
+if _0x0042() ~= _0x003e then
+local _0x0099 = _0x000c._0x004b:_0x0031(_0x003e)
+if _0x0099 then _0x0098:_0x0070(_0x0099) end
+end
+end)
+else
+if _0x0068 then _0x0068:_0x0095(); _0x0068 = nil end
+end
+end)
+_0x005a._0x0002:_0x0090(string.char(65, 117, 116, 111, 65, 116, 116, 97, 99, 107, 77, 97, 105, 110), {
+_0x004e       = string.char(65, 117, 116, 111, 32, 65, 116, 116, 97, 99, 107),
+_0x007d = string.char(3650, 3592, 3617, 3605, 3637, 3629, 3633, 3605, 3650, 3609, 3617, 3633, 3605, 3636, 32, 40, 3618, 3639, 3609, 3605, 3637, 3648, 3593, 3618, 3654, 32, 3652, 3617, 3656, 3648, 3604, 3636, 3609, 3652, 3611, 3627, 3634, 3617, 3629, 3609, 41),
+_0x008c     = false
+}):_0x008d(_0x0071)
+local _0x009d = nil
+_0x005a._0x0002:_0x0090(string.char(65, 117, 116, 111, 72, 97, 107, 105), {
+_0x004e       = string.char(65, 117, 116, 111, 32, 72, 97, 107, 105),
+_0x007d = string.char(3605, 3619, 3623, 3592, 3648, 3594, 3655, 3588, 3649, 3621, 3632, 3648, 3611, 3636, 3604, 3651, 3594, 3657, 3591, 3634, 3609, 3630, 3634, 3588, 3636, 3629, 3633, 3605, 3650, 3609, 3617, 3633, 3605, 3636),
+_0x008c     = false
+}):_0x008d(function()
+if _0x0062._0x009e._0x0074 then
+if _0x009d then return end
+_0x009d = _0x0015._0x0075(function()
+while _0x0062._0x009e._0x0074 do
+local _0x0030 = _0x000c._0x002e
+if _0x0030 then
+local _0x009f = _0x0030:_0x0031(string.char(72, 97, 107, 105, 70, 111, 108, 100, 101, 114)) ~= nil
+if not _0x009f then
+if _0x0037 then
+pcall(function() _0x0037:_0x0078(string.char(77, 105, 115, 99), string.char(98, 117, 115, 111)) end)
+end
+end
+end
+_0x0015._0x0016(2)
+end
+end)
+else
+if _0x009d then
+_0x0015._0x0079(_0x009d)
+_0x009d = nil
+end
+end
+end)
+_0x005a._0x0002:_0x00a1({
+_0x004e   = string.char(65, 117, 116, 111, 32, 83, 107, 105, 108, 108),
+_0x0064 = string.char(3648, 3611, 3636, 3604, 32, 84, 111, 103, 103, 108, 101, 32, 3604, 3657, 3634, 3609, 3621, 3656, 3634, 3591, 3648, 3614, 3639, 3656, 3629, 3651, 3594, 3657, 3626, 3585, 3636, 3621, 3629, 3633, 3605, 3650, 3609, 3617, 3633, 3605, 3636)
+})
+_0x005a._0x0002:_0x00a2(string.char(83, 107, 105, 108, 108, 68, 101, 108, 97, 121), {
+_0x004e       = string.char(83, 107, 105, 108, 108, 32, 68, 101, 108, 97, 121),
+_0x007d = string.char(3627, 3609, 3656, 3623, 3591, 3648, 3623, 3621, 3634, 3619, 3632, 3627, 3623, 3656, 3634, 3591, 3626, 3585, 3636, 3621, 32, 40, 120, 48, 46, 49, 115, 41, 32, 124, 32, 48, 32, 61, 32, 3611, 3621, 3656, 3629, 3618, 3607, 3633, 3609, 3607, 3637),
+_0x008c     = 0, _0x00a3 = 0, _0x00a4 = 50, _0x00a5 = 0,
+_0x007e    = function(_0x0044) end
+})
+local function _0x00a6()
+if _0x0069 then return end
+_0x0069 = _0x0015._0x0075(function()
+while true do
+local _0x00a7 = (_0x0062._0x00a8._0x0074 or 0) * 0.1
+local _0x00a9  = _0x0042()
+if _0x00a9 then
+if _0x0062._0x00aa and _0x0062._0x00aa._0x0074 then
+_0x0037:_0x0078(_0x00a9,string.char(122))
+if _0x00a7 > 0 then _0x0015._0x0016(_0x00a7) end
+end
+if _0x0062._0x00ab and _0x0062._0x00ab._0x0074 then
+_0x0037:_0x0078(_0x00a9,string.char(120))
+if _0x00a7 > 0 then _0x0015._0x0016(_0x00a7) end
+end
+if _0x0062._0x00ac and _0x0062._0x00ac._0x0074 then
+_0x0037:_0x0078(_0x00a9,string.char(99))
+if _0x00a7 > 0 then _0x0015._0x0016(_0x00a7) end
+end
+if _0x0062._0x00ad and _0x0062._0x00ad._0x0074 then
+_0x0037:_0x0078(_0x00a9,string.char(118))
+if _0x00a7 > 0 then _0x0015._0x0016(_0x00a7) end
+end
+end
+_0x0015._0x0016()
+end
+end)
+end
+local function _0x00ae()
+local _0x00af = (_0x0062._0x00aa and _0x0062._0x00aa._0x0074)
+or (_0x0062._0x00ab and _0x0062._0x00ab._0x0074)
+or (_0x0062._0x00ac and _0x0062._0x00ac._0x0074)
+or (_0x0062._0x00ad and _0x0062._0x00ad._0x0074)
+if _0x00af then
+_0x00a6()
+else
+if _0x0069 then _0x0015._0x0079(_0x0069); _0x0069 = nil end
+end
+end
+_0x005a._0x0002:_0x0090(string.char(83, 107, 105, 108, 108, 90), { _0x004e = string.char(65, 117, 116, 111, 32, 83, 107, 105, 108, 108, 32, 90), _0x008c = false }):_0x008d(_0x00ae)
+_0x005a._0x0002:_0x0090(string.char(83, 107, 105, 108, 108, 88), { _0x004e = string.char(65, 117, 116, 111, 32, 83, 107, 105, 108, 108, 32, 88), _0x008c = false }):_0x008d(_0x00ae)
+_0x005a._0x0002:_0x0090(string.char(83, 107, 105, 108, 108, 67), { _0x004e = string.char(65, 117, 116, 111, 32, 83, 107, 105, 108, 108, 32, 67), _0x008c = false }):_0x008d(_0x00ae)
+_0x005a._0x0002:_0x0090(string.char(83, 107, 105, 108, 108, 86), { _0x004e = string.char(65, 117, 116, 111, 32, 83, 107, 105, 108, 108, 32, 86), _0x008c = false }):_0x008d(_0x00ae)
+_0x005a._0x0002:_0x0089(string.char(70, 97, 114, 109, 80, 111, 115, 105, 116, 105, 111, 110), {
+_0x004e       = string.char(70, 97, 114, 109, 32, 80, 111, 115, 105, 116, 105, 111, 110),
+_0x007d = string.char(3605, 3635, 3649, 3627, 3609, 3656, 3591, 3607, 3637, 3656, 3592, 3632, 3618, 3639, 3609, 3615, 3634, 3619, 3660, 3617),
+_0x008a      = {string.char(65, 98, 111, 118, 101), string.char(66, 101, 108, 111, 119), string.char(66, 101, 104, 105, 110, 100), string.char(73, 110, 32, 70, 114, 111, 110, 116)},
+_0x008b       = false,
+_0x008c     = 3,
+})
+_0x005a._0x0002:_0x00a2(string.char(70, 97, 114, 109, 68, 105, 115, 116, 97, 110, 99, 101), {
+_0x004e       = string.char(70, 97, 114, 109, 32, 68, 105, 115, 116, 97, 110, 99, 101),
+_0x007d = string.char(3619, 3632, 3618, 3632, 3627, 3656, 3634, 3591, 3592, 3634, 3585, 3648, 3611, 3657, 3634, 3627, 3617, 3634, 3618),
+_0x008c     = 10, _0x00a3 = 0, _0x00a4 = 30, _0x00a5 = 1,
+_0x007e    = function(_0x0044) end
+})
+local function _0x00b5(_0x00b6)
+local _0x00b7 = nil
+local _0x00b8 = math._0x00b9
+local _0x00ba = _0x002e and _0x002e:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116))
+local _0x00bb = _0x00ba and _0x00ba._0x00bc or _0x00bd._0x00be
+local _0x00bf = string.gsub(_0x00b6, string.char(37, 115, 42, 37, 91, 63, 91, 76, 108, 93, 91, 86, 118, 93, 91, 76, 108, 93, 63, 37, 46, 63, 37, 115, 42, 37, 100, 43, 37, 93, 63, 36), "")
+_0x00bf = string.gsub(_0x00bf, string.char(37, 115, 42, 37, 91, 63, 91, 76, 108, 93, 91, 69, 101, 93, 91, 86, 118, 93, 91, 69, 101, 93, 91, 76, 108, 93, 37, 115, 42, 37, 100, 43, 37, 93, 63, 36), "")
+local _0x00c0 = string.lower(string.match(_0x00bf, string.char(94, 37, 115, 42, 40, 46, 45, 41, 37, 115, 42, 36)) or _0x00bf)
+for _0x0043, _0x0044 in ipairs(_0x00c1:_0x00c2()) do
+if _0x0044:_0x0046(string.char(77, 111, 100, 101, 108)) and _0x0044:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x0044._0x00c3._0x00c4 > 0
+and _0x0044:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) and not _0x000a:_0x00c5(_0x0044)
+and not _0x0044:_0x00c6(string.char(80, 114, 111, 120, 105, 109, 105, 116, 121, 80, 114, 111, 109, 112, 116), true) then
+local _0x00c7 = string.gsub(_0x0044._0x0047, string.char(37, 115, 42, 37, 91, 63, 91, 76, 108, 93, 91, 86, 118, 93, 91, 76, 108, 93, 63, 37, 46, 63, 37, 115, 42, 37, 100, 43, 37, 93, 63, 36), "")
+_0x00c7 = string.gsub(_0x00c7, string.char(37, 115, 42, 37, 91, 63, 91, 76, 108, 93, 91, 69, 101, 93, 91, 86, 118, 93, 91, 69, 101, 93, 91, 76, 108, 93, 37, 115, 42, 37, 100, 43, 37, 93, 63, 36), "")
+local _0x00c8 = string.lower(string.match(_0x00c7, string.char(94, 37, 115, 42, 40, 46, 45, 41, 37, 115, 42, 36)) or _0x00c7)
+if _0x00c8 == _0x00c0 then
+local _0x00c9 = (_0x0044._0x00ca._0x00bc - _0x00bb)._0x00cb
+if _0x00c9 < _0x00b8 then
+_0x00b8 = _0x00c9
+_0x00b7 = _0x0044
+end
+end
+end
+end
+return _0x00b7
+end
+local function _0x00cc(_0x00cd)
+if not _0x002e or not _0x002e:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) then return end
+local _0x00ba = _0x002e._0x00ca
+local _0x00ce
+if _0x00cf(_0x00cd) == string.char(73, 110, 115, 116, 97, 110, 99, 101) then
+if _0x00cd:_0x0046(string.char(77, 111, 100, 101, 108)) then
+_0x00ce = _0x00cd:_0x00d0()
+elseif _0x00cd:_0x0046(string.char(66, 97, 115, 101, 80, 97, 114, 116)) then
+_0x00ce = _0x00cd._0x00d1
+end
+elseif _0x00cf(_0x00cd) == string.char(67, 70, 114, 97, 109, 101) then
+_0x00ce = _0x00cd
+end
+if not _0x00ce then return nil end
+local _0x00d2 = _0x00ce._0x00bc
+local _0x00d3 = _0x0062._0x00d4 and _0x0062._0x00d4._0x0074 or string.char(65, 98, 111, 118, 101)
+local _0x00c9 = _0x0062._0x00d5 and _0x0062._0x00d5._0x0074 or 10
+local _0x00d6
+if _0x00d3 == string.char(65, 98, 111, 118, 101) then
+_0x00d6 = _0x00d2 + _0x00bd._0x00d7(0, _0x00c9, 0)
+elseif _0x00d3 == string.char(66, 101, 108, 111, 119) then
+_0x00d6 = _0x00d2 + _0x00bd._0x00d7(0, -_0x00c9, 0)
+elseif _0x00d3 == string.char(66, 101, 104, 105, 110, 100) then
+_0x00d6 = (_0x00ce * _0x00d1._0x00d7(0, 0, _0x00c9))._0x00bc
+elseif _0x00d3 == string.char(73, 110, 32, 70, 114, 111, 110, 116) then
+_0x00d6 = (_0x00ce * _0x00d1._0x00d7(0, 0, -_0x00c9))._0x00bc
+end
+local _0x00d8 = _0x00d1._0x00d9(_0x00d6, _0x00d2)
+_0x00ba._0x00d1 = _0x00d8
+_0x00ba._0x00da = _0x00bd._0x00be
+_0x00ba._0x00db = _0x00bd._0x00be
+return nil
+end
+local _0x00de = {}
+local function _0x00df()
+local _0x00e0 = {}
+local _0x004a = {}
+_0x00de = {}
+local _0x00e1  = { string.char(78, 97, 109, 101), string.char(69, 110, 101, 109, 121, 78, 97, 109, 101), string.char(77, 111, 110, 115, 116, 101, 114, 78, 97, 109, 101), string.char(84, 97, 114, 103, 101, 116, 78, 97, 109, 101), string.char(84, 97, 114, 103, 101, 116), string.char(69, 110, 101, 109, 121), string.char(75, 105, 108, 108, 78, 97, 109, 101), string.char(77, 111, 98, 78, 97, 109, 101), string.char(81, 117, 101, 115, 116, 69, 110, 101, 109, 121) }
+local _0x00e2  = { string.char(76, 101, 118, 101, 108), string.char(69, 110, 101, 109, 121, 76, 101, 118, 101, 108), string.char(77, 111, 110, 115, 116, 101, 114, 76, 101, 118, 101, 108), string.char(84, 97, 114, 103, 101, 116, 76, 101, 118, 101, 108), string.char(75, 105, 108, 108, 76, 101, 118, 101, 108), string.char(76, 118, 82, 101, 113) }
+for _0x0043, _0x0044 in ipairs(_0x00c1:_0x00c2()) do
+if _0x0044:_0x0046(string.char(80, 114, 111, 120, 105, 109, 105, 116, 121, 80, 114, 111, 109, 112, 116)) then
+local _0x00e3 = _0x0044:_0x00e4(string.char(77, 111, 100, 101, 108))
+local _0x00e5  = _0x0044._0x00e6
+local _0x00e7 = _0x00e3 or _0x00e5
+local _0x00e8  = _0x00e3 and (_0x00e3._0x0047 ~= string.char(87, 111, 114, 107, 115, 112, 97, 99, 101) and _0x00e3._0x0047) or _0x00e5._0x0047
+if string.find(string.lower(_0x00e8), string.char(113, 117, 101, 115, 116))
+and not _0x004a[_0x00e8]
+and not _0x000a:_0x00c5(_0x00e7) then
+local _0x00b6, _0x00e9
+for _0x0043, _0x00ea in ipairs(_0x00e1) do
+local _0x008e = _0x00e7:_0x0039(_0x00ea)
+if _0x008e and tostring(_0x008e) ~= "" then _0x00b6 = tostring(_0x008e); break end
+end
+for _0x0043, _0x00ea in ipairs(_0x00e2) do
+local _0x008e = _0x00e7:_0x0039(_0x00ea)
+if _0x008e then _0x00e9 = tonumber(_0x008e); break end
+end
+if not _0x00b6 then
+for _0x0043, _0x00eb in ipairs(_0x00e7:_0x00c2()) do
+if (_0x00eb:_0x0046(string.char(84, 101, 120, 116, 76, 97, 98, 101, 108)) or _0x00eb:_0x0046(string.char(84, 101, 120, 116, 66, 117, 116, 116, 111, 110))) and _0x00eb._0x00e6 and (_0x00eb._0x00e6:_0x0046(string.char(66, 105, 108, 108, 98, 111, 97, 114, 100, 71, 117, 105)) or _0x00eb._0x00e6:_0x0046(string.char(83, 117, 114, 102, 97, 99, 101, 71, 117, 105)) or _0x00eb._0x00e6:_0x0046(string.char(83, 99, 114, 101, 101, 110, 71, 117, 105))) then
+local _0x00ec = _0x00eb._0x00ed
+local _0x00ee = string.match(_0x00ec, string.char(91, 75, 107, 93, 105, 108, 108, 37, 115, 43, 40, 46, 45, 41, 37, 115, 42, 91, 120, 88, 37, 100, 93))
+or string.match(_0x00ec, string.char(91, 72, 104, 93, 117, 110, 116, 37, 115, 43, 40, 46, 45, 41, 37, 115, 42, 91, 120, 88, 37, 100, 93))
+or string.match(_0x00ec, string.char(91, 68, 100, 93, 101, 102, 101, 97, 116, 37, 115, 43, 40, 46, 45, 41, 37, 115, 42, 91, 120, 88, 37, 100, 93))
+or string.match(_0x00ec, string.char(91, 83, 115, 93, 108, 97, 121, 37, 115, 43, 40, 46, 45, 41, 37, 115, 42, 91, 120, 88, 37, 100, 93))
+if _0x00ee and _0x00ee ~= "" then
+_0x00b6 = string.match(_0x00ee, string.char(94, 37, 115, 42, 40, 46, 45, 41, 37, 115, 42, 36))
+end
+if not _0x00e9 then
+_0x00e9 = tonumber(string.match(_0x00ec, string.char(91, 76, 108, 93, 118, 37, 46, 63, 37, 115, 42, 40, 37, 100, 43, 41)) or string.match(_0x00ec, string.char(91, 76, 108, 93, 101, 118, 101, 108, 37, 115, 42, 40, 37, 100, 43, 41)))
+end
+if _0x00b6 then break end
+end
+end
+end
+local _0x00ef
+if _0x00b6 and _0x00b6 ~= "" then
+if _0x00e9 then
+_0x00ef = _0x00b6 .. string.char(32, 40, 76, 118, 46) .. _0x00e9 .. string.char(41)
+else
+_0x00ef = _0x00b6
+end
+else
+_0x00ef = _0x00e8
+_0x00b6 = _0x00e8
+end
+_0x004a[_0x00e8] = true
+_0x00de[_0x00ef] = { _0x00e8 = _0x00e8, _0x00b6 = _0x00b6 or "", _0x00e9 = _0x00e9 }
+table.insert(_0x00e0, _0x00ef)
+end
+end
+end
+table.sort(_0x00e0)
+if #_0x00e0 == 0 then table.insert(_0x00e0, string.char(40, 78, 111, 32, 81, 117, 101, 115, 116, 32, 78, 80, 67, 115, 32, 70, 111, 117, 110, 100, 41)) end
+return _0x00e0
+end
+local _0x00f0    = _0x00df()
+local _0x00f1 = {}
+local _0x00f2   = nil
+_0x005a._0x005d:_0x0089(string.char(78, 80, 67, 83, 101, 108, 101, 99, 116), {
+_0x004e       = string.char(83, 101, 108, 101, 99, 116, 32, 81, 117, 101, 115, 116, 32, 77, 111, 110, 115, 116, 101, 114, 115),
+_0x007d = string.char(3648, 3621, 3639, 3629, 3585, 3652, 3604, 3657, 3627, 3621, 3634, 3618, 3605, 3633, 3623, 32, 3592, 3632, 3615, 3634, 3619, 3660, 3617, 3605, 3634, 3617, 3621, 3635, 3604, 3633, 3610, 3607, 3637, 3656, 3648, 3621, 3639, 3629, 3585),
+_0x008a      = _0x00f0,
+_0x008b       = true,
+_0x008c     = {},
+}):_0x008d(function(_0x008e)
+_0x00f1 = {}
+for _0x0043, _0x0092 in ipairs(_0x00f0) do
+if _0x008e[_0x0092] then
+table.insert(_0x00f1, _0x0092)
+end
+end
+end)
+_0x005a._0x005d:_0x007c({
+_0x004e       = string.char(82, 101, 102, 114, 101, 115, 104, 32, 81, 117, 101, 115, 116, 32, 78, 80, 67, 115),
+_0x007d = string.char(3626, 3649, 3585, 3609, 3627, 3634, 32, 81, 117, 101, 115, 116, 32, 78, 80, 67, 32, 3651, 3627, 3617, 3656),
+_0x007e    = function()
+_0x00f0 = _0x00df()
+_0x0017:_0x0063({
+_0x004e   = string.char(81, 117, 101, 115, 116, 32, 78, 80, 67, 115),
+_0x0064 = (string.char(70, 111, 117, 110, 100, 32, 37, 100, 32, 78, 80, 67, 115)):format(#_0x00f0),
+_0x0065 = 4
+})
+end
+})
+local function _0x00f3(_0x00f4)
+local _0x00f5 = nil
+local _0x00f6 = -1
+for _0x00ef, _0x00f7 in pairs(_0x00de) do
+if _0x00f7._0x00e9 and _0x00f7._0x00e9 <= _0x00f4 then
+if _0x00f7._0x00e9 > _0x00f6 then
+_0x00f6 = _0x00f7._0x00e9
+_0x00f5 = _0x00ef
+end
+end
+end
+if not _0x00f5 then
+local _0x00f8 = math._0x00b9
+for _0x00ef, _0x00f7 in pairs(_0x00de) do
+if _0x00f7._0x00e9 and _0x00f7._0x00e9 < _0x00f8 then
+_0x00f8 = _0x00f7._0x00e9
+_0x00f5 = _0x00ef
+end
+end
+end
+return _0x00f5
+end
+local _0x00f9 = nil
+_0x005a._0x005d:_0x0090(string.char(65, 117, 116, 111, 70, 97, 114, 109, 76, 101, 118, 101, 108), {
+_0x004e       = string.char(65, 117, 116, 111, 32, 70, 97, 114, 109, 32, 76, 101, 118, 101, 108, 32, 40, 49, 32, 45, 32, 77, 97, 120, 41),
+_0x007d = string.char(3615, 3634, 3619, 3660, 3617, 3648, 3588, 3623, 3626, 3605, 3634, 3617, 3648, 3621, 3648, 3623, 3621, 3611, 3633, 3592, 3592, 3640, 3610, 3633, 3609, 3629, 3633, 3605, 3650, 3609, 3617, 3633, 3605, 3636, 32, 40, 3652, 3617, 3656, 3605, 3657, 3629, 3591, 3648, 3621, 3639, 3629, 3585, 3648, 3588, 3623, 3626, 41),
+_0x008c     = false
+}):_0x008d(function()
+if _0x0062._0x00fa._0x0074 then
+if _0x0062._0x00fb and _0x0062._0x00fb._0x0074 then _0x0062._0x00fb:_0x008f(false) end
+if _0x0062._0x00fc and _0x0062._0x00fc._0x0074 then _0x0062._0x00fc:_0x008f(false) end
+if _0x0062._0x00fd and _0x0062._0x00fd._0x0074 then _0x0062._0x00fd:_0x008f(false) end
+if _0x00f9 then return end
+local _0x00fe = _0x0028:_0x0036(string.char(77, 111, 100, 117, 108, 101, 115)):_0x0036(string.char(78, 101, 116, 119, 111, 114, 107, 70, 114, 97, 109, 101, 119, 111, 114, 107)):_0x0036(string.char(78, 101, 116, 119, 111, 114, 107, 69, 118, 101, 110, 116))
+_0x00f9 = _0x0015._0x0075(function()
+while _0x0062._0x00fa._0x0074 do
+local _0x00f4 = tonumber(_0x003b(string.char(76, 101, 118, 101, 108)) or 1)
+_0x00df()
+local _0x00ff = _0x00f3(_0x00f4)
+local _0x0100 = _0x00ff and _0x00de[_0x00ff]
+if _0x00ff and _0x0100 then
+local _0x0101 = _0x0100._0x00e8
+local _0x00b6      = _0x0100._0x00b6
+local _0x0102 = nil
+pcall(function()
+local _0x0103 = tostring(_0x000c:_0x0039(string.char(81, 117, 101, 115, 116)) or string.char(91, 93))
+if _0x0103 ~= "" and _0x0103 ~= string.char(91, 93) and _0x0103 ~= string.char(123, 125) then
+_0x0102 = _0x002b:_0x0104(_0x0103)
+end
+end)
+local _0x0105       = _0x0102 ~= nil
+local _0x0106     = _0x0105 and tostring(_0x0102[string.char(84, 105, 116, 108, 101)] or "") or ""
+local _0x0107 = _0x0105 and string.lower(_0x0106) == string.lower(_0x00b6)
+if _0x0105 and not _0x0107 then
+pcall(function() _0x00fe:_0x0078(string.char(102, 105, 114, 101), nil, string.char(81, 117, 101, 115, 116), string.char(67, 97, 110, 99, 101, 108)) end)
+_0x0015._0x0016(0.8)
+_0x0105 = false
+end
+if not _0x0105 then
+local _0x0108 = nil
+for _0x0043, _0x0044 in ipairs(_0x00c1:_0x00c2()) do
+if _0x0044:_0x0046(string.char(77, 111, 100, 101, 108)) and _0x0044._0x0047 == _0x0101 then
+_0x0108 = _0x0044; break
+end
+end
+if _0x0108 and _0x002e and _0x002e:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) then
+_0x00cc(_0x0108:_0x00d0())
+_0x0015._0x0016(0.4)
+for _0x0043, _0x0109 in ipairs(_0x0108:_0x00c2()) do
+if _0x0109:_0x0046(string.char(80, 114, 111, 120, 105, 109, 105, 116, 121, 80, 114, 111, 109, 112, 116)) then
+pcall(function() _0x010a(_0x0109) end)
+end
+end
+_0x0015._0x0016(0.6)
+end
+end
+local _0x010b = 1
+pcall(function()
+local _0x0103 = tostring(_0x000c:_0x0039(string.char(81, 117, 101, 115, 116)) or string.char(91, 93))
+if _0x0103 ~= "" and _0x0103 ~= string.char(91, 93) and _0x0103 ~= string.char(123, 125) then
+local _0x00f7 = _0x002b:_0x0104(_0x0103)
+_0x010b = tonumber(_0x00f7[string.char(77, 97, 120)]) or 1
+end
+end)
+local function _0x010c()
+local _0x010d = nil
+local _0x00b8 = math._0x00b9
+local char = _0x002d()
+local _0x00bb = char and char:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) and char._0x00ca._0x00bc or _0x00bd._0x00be
+for _0x0043, _0x0044 in ipairs(_0x00c1:_0x00c2()) do
+if _0x0044:_0x0046(string.char(77, 111, 100, 101, 108)) and _0x0044:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x0044._0x00c3._0x00c4 > 0 and _0x0044:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) and not _0x000a:_0x00c5(_0x0044) and not _0x0044:_0x00c6(string.char(80, 114, 111, 120, 105, 109, 105, 116, 121, 80, 114, 111, 109, 112, 116), true) then
+local _0x00c7 = string.gsub(_0x0044._0x0047, string.char(37, 115, 42, 37, 91, 63, 91, 76, 108, 93, 91, 86, 118, 93, 91, 76, 108, 93, 63, 37, 46, 63, 37, 115, 42, 37, 100, 43, 37, 93, 63, 37, 115, 42, 36), "")
+_0x00c7 = string.match(_0x00c7, string.char(94, 37, 115, 42, 40, 46, 45, 41, 37, 115, 42, 36)) or _0x00c7
+if string.lower(_0x00c7) == string.lower(_0x00b6) then
+local _0x00c9 = (_0x0044._0x00ca._0x00bc - _0x00bb)._0x00cb
+if _0x00c9 < _0x00b8 then _0x00b8 = _0x00c9; _0x010d = _0x0044 end
+end
+end
+end
+return _0x010d
+end
+local _0x010e = 0
+while _0x0062._0x00fa._0x0074 and _0x010e < _0x010b do
+local _0x010f = _0x010c()
+if _0x010f and _0x010f:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) then
+local _0x0110 = _0x010f._0x00ca
+local _0x0111
+_0x0111 = _0x002a._0x0096:_0x0034(function()
+if not _0x0062._0x00fa._0x0074 or not _0x010f._0x00e6 or not _0x010f:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) or _0x010f._0x00c3._0x00c4 <= 0 then
+_0x0111:_0x0095(); return
+end
+local _0x0030 = _0x002d()
+if _0x0030 then _0x002e = _0x0030 end
+_0x00cc(_0x0110)
+end)
+while _0x0062._0x00fa._0x0074 and _0x010f._0x00e6 and _0x010f:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x010f._0x00c3._0x00c4 > 0 do
+_0x0015._0x0016(0.1)
+end
+if _0x0111 then _0x0111:_0x0095() end
+if _0x010f._0x00e6 == nil or (_0x010f:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x010f._0x00c3._0x00c4 <= 0) then
+_0x010e = _0x010e + 1
+end
+else
+_0x0015._0x0016(1)
+end
+end
+else
+_0x0015._0x0016(1)
+end
+_0x0015._0x0016()
+end
+end)
+else
+if _0x00f9 then _0x0015._0x0079(_0x00f9); _0x00f9 = nil end
+end
+end)
+_0x005a._0x005d:_0x0090(string.char(65, 117, 116, 111, 70, 97, 114, 109, 84, 111, 103, 103, 108, 101), {
+_0x004e       = string.char(65, 117, 116, 111, 32, 70, 97, 114, 109, 32, 40, 81, 117, 101, 115, 116, 32, 43, 32, 75, 105, 108, 108, 41),
+_0x007d = string.char(3648, 3611, 3636, 3604, 3648, 3614, 3639, 3656, 3629, 3623, 3634, 3619, 3660, 3611, 3652, 3611, 3619, 3633, 3610, 3648, 3588, 3623, 3626, 32, 45, 62, 32, 3623, 3636, 3656, 3591, 3652, 3611, 3605, 3637, 3617, 3629, 3609, 32, 45, 62, 32, 3623, 3609, 3595, 3657, 3635),
+_0x008c     = false
+}):_0x008d(function()
+if _0x0062._0x00fb._0x0074 then
+if _0x0062._0x00fa and _0x0062._0x00fa._0x0074 then _0x0062._0x00fa:_0x008f(false) end
+if _0x0062._0x00fc and _0x0062._0x00fc._0x0074 then _0x0062._0x00fc:_0x008f(false) end
+if _0x0062._0x00fd and _0x0062._0x00fd._0x0074 then _0x0062._0x00fd:_0x008f(false) end
+if _0x00f2 then return end
+local _0x00fe = _0x0028:_0x0036(string.char(77, 111, 100, 117, 108, 101, 115))
+:_0x0036(string.char(78, 101, 116, 119, 111, 114, 107, 70, 114, 97, 109, 101, 119, 111, 114, 107))
+:_0x0036(string.char(78, 101, 116, 119, 111, 114, 107, 69, 118, 101, 110, 116))
+_0x00f2 = _0x0015._0x0075(function()
+local _0x0112 = 1
+while _0x0062._0x00fb._0x0074 do
+if #_0x00f1 > 0 then
+local _0x00ff = _0x00f1[_0x0112]
+local _0x0100 = _0x00ff and _0x00de[_0x00ff]
+if _0x00ff and _0x0100 then
+local _0x0101 = _0x0100._0x00e8
+local _0x00b6      = _0x0100._0x00b6
+local _0x0102 = nil
+pcall(function()
+local _0x0103 = tostring(_0x000c:_0x0039(string.char(81, 117, 101, 115, 116)) or string.char(91, 93))
+if _0x0103 ~= "" and _0x0103 ~= string.char(91, 93) and _0x0103 ~= string.char(123, 125) then
+_0x0102 = _0x002b:_0x0104(_0x0103)
+end
+end)
+local _0x0105       = _0x0102 ~= nil
+local _0x0106     = _0x0105 and tostring(_0x0102[string.char(84, 105, 116, 108, 101)] or "") or ""
+local _0x0107 = _0x0105 and string.lower(_0x0106) == string.lower(_0x00b6)
+if _0x0105 and not _0x0107 then
+pcall(function()
+_0x00fe:_0x0078(string.char(102, 105, 114, 101), nil, string.char(81, 117, 101, 115, 116), string.char(67, 97, 110, 99, 101, 108))
+end)
+_0x0015._0x0016(0.8)
+_0x0105 = false
+end
+if not _0x0105 then
+local _0x0108 = nil
+for _0x0043, _0x0044 in ipairs(_0x00c1:_0x00c2()) do
+if _0x0044:_0x0046(string.char(77, 111, 100, 101, 108)) and _0x0044._0x0047 == _0x0101 then
+_0x0108 = _0x0044; break
+end
+end
+if _0x0108 and _0x002e and _0x002e:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) then
+_0x00cc(_0x0108:_0x00d0())
+_0x0015._0x0016(0.4)
+for _0x0043, _0x0109 in ipairs(_0x0108:_0x00c2()) do
+if _0x0109:_0x0046(string.char(80, 114, 111, 120, 105, 109, 105, 116, 121, 80, 114, 111, 109, 112, 116)) then
+pcall(function() _0x010a(_0x0109) end)
+end
+end
+_0x0015._0x0016(0.6)
+end
+end
+local _0x010b = 1
+pcall(function()
+local _0x0103 = tostring(_0x000c:_0x0039(string.char(81, 117, 101, 115, 116)) or string.char(91, 93))
+if _0x0103 ~= "" and _0x0103 ~= string.char(91, 93) and _0x0103 ~= string.char(123, 125) then
+local _0x00f7 = _0x002b:_0x0104(_0x0103)
+_0x010b = tonumber(_0x00f7[string.char(77, 97, 120)]) or 1
+end
+end)
+local function _0x010c()
+local _0x010d = nil
+local _0x00b8 = math._0x00b9
+local char = _0x002d()
+local _0x00bb = char and char:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116))
+and char._0x00ca._0x00bc or _0x00bd._0x00be
+for _0x0043, _0x0044 in ipairs(_0x00c1:_0x00c2()) do
+if _0x0044:_0x0046(string.char(77, 111, 100, 101, 108)) and _0x0044:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x0044._0x00c3._0x00c4 > 0
+and _0x0044:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) and not _0x000a:_0x00c5(_0x0044)
+and not _0x0044:_0x00c6(string.char(80, 114, 111, 120, 105, 109, 105, 116, 121, 80, 114, 111, 109, 112, 116), true) then
+local _0x00c7 = string.gsub(_0x0044._0x0047, string.char(37, 115, 42, 37, 91, 63, 91, 76, 108, 93, 91, 86, 118, 93, 91, 76, 108, 93, 63, 37, 46, 63, 37, 115, 42, 37, 100, 43, 37, 93, 63, 37, 115, 42, 36), "")
+_0x00c7 = string.match(_0x00c7, string.char(94, 37, 115, 42, 40, 46, 45, 41, 37, 115, 42, 36)) or _0x00c7
+if string.lower(_0x00c7) == string.lower(_0x00b6) then
+local _0x00c9 = (_0x0044._0x00ca._0x00bc - _0x00bb)._0x00cb
+if _0x00c9 < _0x00b8 then _0x00b8 = _0x00c9; _0x010d = _0x0044 end
+end
+end
+end
+return _0x010d
+end
+local _0x010e = 0
+while _0x0062._0x00fb._0x0074 and _0x010e < _0x010b do
+local _0x010f = _0x010c()
+if _0x010f and _0x010f:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) then
+local _0x0110 = _0x010f._0x00ca
+local _0x0111
+_0x0111 = _0x002a._0x0096:_0x0034(function()
+if not _0x0062._0x00fb._0x0074
+or not _0x010f._0x00e6
+or not _0x010f:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100))
+or _0x010f._0x00c3._0x00c4 <= 0 then
+_0x0111:_0x0095(); return
+end
+local _0x0030 = _0x002d()
+if _0x0030 then _0x002e = _0x0030 end
+_0x00cc(_0x0110)
+end)
+while _0x0062._0x00fb._0x0074 and _0x010f._0x00e6
+and _0x010f:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x010f._0x00c3._0x00c4 > 0 do
+_0x0015._0x0016(0.1)
+end
+_0x0111:_0x0095()
+if _0x010f._0x00e6 == nil or (_0x010f:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x010f._0x00c3._0x00c4 <= 0) then
+_0x010e = _0x010e + 1
+end
+else
+_0x0015._0x0016(1)
+end
+end
+_0x0112 = (_0x0112 % #_0x00f1) + 1
+else
+_0x0112 = (_0x0112 % #_0x00f1) + 1
+_0x0015._0x0016(0.5)
+end
+else
+_0x0015._0x0016(1)
+end
+end
+end)
+else
+if _0x00f2 then _0x0015._0x0079(_0x00f2); _0x00f2 = nil end
+end
+end)
+local _0x0113 = nil
+_0x005a._0x005d:_0x0090(string.char(65, 117, 116, 111, 70, 97, 114, 109, 75, 105, 108, 108, 79, 110, 108, 121), {
+_0x004e       = string.char(65, 117, 116, 111, 32, 70, 97, 114, 109, 32, 40, 75, 105, 108, 108, 32, 79, 110, 108, 121, 41),
+_0x007d = string.char(3605, 3637, 3617, 3629, 3609, 3626, 3648, 3605, 3629, 3619, 3660, 3592, 3634, 3585, 3648, 3588, 3623, 3626, 3607, 3637, 3656, 3648, 3621, 3639, 3629, 3585, 3604, 3657, 3634, 3609, 3610, 3609, 32, 40, 3652, 3617, 3656, 3605, 3657, 3629, 3591, 3619, 3633, 3610, 3648, 3588, 3623, 3626, 41),
+_0x008c     = false
+}):_0x008d(function()
+if _0x0062._0x00fc._0x0074 then
+if _0x0062._0x00fb and _0x0062._0x00fb._0x0074 then _0x0062._0x00fb:_0x008f(false) end
+if _0x0062._0x00fa and _0x0062._0x00fa._0x0074 then _0x0062._0x00fa:_0x008f(false) end
+if _0x0062._0x00fd and _0x0062._0x00fd._0x0074 then _0x0062._0x00fd:_0x008f(false) end
+if _0x0113 then return end
+_0x0113 = _0x0015._0x0075(function()
+local _0x0112 = 1
+while _0x0062._0x00fc._0x0074 do
+if #_0x00f1 > 0 then
+local _0x00ff = _0x00f1[_0x0112]
+local _0x0100 = _0x00ff and _0x00de[_0x00ff]
+if _0x00ff and _0x0100 then
+local _0x00b6 = _0x0100._0x00b6
+local _0x010f = _0x00b5(_0x00b6)
+if _0x010f and _0x002e and _0x002e:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) then
+local _0x0110 = _0x010f._0x00ca
+local _0x0111
+_0x0111 = _0x002a._0x0096:_0x0034(function()
+if not _0x0062._0x00fc._0x0074
+or not _0x010f._0x00e6
+or not _0x010f:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100))
+or _0x010f._0x00c3._0x00c4 <= 0 then
+_0x0111:_0x0095(); return
+end
+local _0x0030 = _0x002d()
+if _0x0030 then _0x002e = _0x0030 end
+_0x00cc(_0x0110)
+end)
+while _0x0062._0x00fc._0x0074 and _0x010f._0x00e6 and _0x010f:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x010f._0x00c3._0x00c4 > 0 do
+_0x0015._0x0016(0.1)
+end
+if _0x0111 then _0x0111:_0x0095() end
+_0x0112 = (_0x0112 % #_0x00f1) + 1
+else
+_0x0015._0x0016(1)
+_0x0112 = (_0x0112 % #_0x00f1) + 1
+end
+else
+_0x0112 = (_0x0112 % #_0x00f1) + 1
+_0x0015._0x0016(0.5)
+end
+else
+_0x0015._0x0016(1)
+end
+_0x0015._0x0016()
+end
+end)
+else
+if _0x0113 then _0x0015._0x0079(_0x0113); _0x0113 = nil end
+end
+end)
+local _0x0114 = nil
+_0x005a._0x005d:_0x0090(string.char(65, 117, 116, 111, 70, 97, 114, 109, 69, 118, 101, 110, 116), {
+_0x004e       = string.char(65, 117, 116, 111, 32, 70, 97, 114, 109, 32, 69, 118, 101, 110, 116, 32, 73, 115, 108, 97, 110, 100),
+_0x007d = string.char(3623, 3634, 3619, 3660, 3611, 3652, 3611, 3648, 3585, 3634, 3632, 32, 69, 118, 101, 110, 116, 32, 3649, 3621, 3632, 3615, 3634, 3619, 3660, 3617, 3617, 3629, 3609, 3626, 3648, 3605, 3629, 3619, 3660, 3607, 3633, 3657, 3591, 3627, 3617, 3604, 3610, 3609, 3648, 3585, 3634, 3632, 3629, 3633, 3605, 3650, 3609, 3617, 3633, 3605, 3636),
+_0x008c     = false
+}):_0x008d(function()
+if _0x0062._0x00fd._0x0074 then
+if _0x0062._0x00fb and _0x0062._0x00fb._0x0074 then _0x0062._0x00fb:_0x008f(false) end
+if _0x0062._0x00fa and _0x0062._0x00fa._0x0074 then _0x0062._0x00fa:_0x008f(false) end
+if _0x0062._0x00fc and _0x0062._0x00fc._0x0074 then _0x0062._0x00fc:_0x008f(false) end
+if _0x0114 then return end
+_0x0114 = _0x0015._0x0075(function()
+local _0x0115 = _0x00d1._0x00d7(-65.49, 28.86, -1359.47)
+local _0x0116 = _0x0115._0x00bc
+local function _0x0117()
+local _0x010d = nil
+local _0x00b8 = math._0x00b9
+local char = _0x002d()
+local _0x00bb = char and char:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) and char._0x00ca._0x00bc or _0x00bd._0x00be
+for _0x0043, _0x0044 in ipairs(_0x00c1:_0x00c2()) do
+if _0x0044:_0x0046(string.char(77, 111, 100, 101, 108)) and _0x0044:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x0044._0x00c3._0x00c4 > 0 and _0x0044:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) then
+if not _0x000a:_0x00c5(_0x0044) then
+local _0x0118 = _0x0044._0x00ca._0x00bc
+local _0x0119 = false
+if (_0x0118 - _0x0116)._0x00cb < 1200 then
+if not _0x0044:_0x00c6(string.char(80, 114, 111, 120, 105, 109, 105, 116, 121, 80, 114, 111, 109, 112, 116), true) and not string.find(string.lower(_0x0044._0x0047), string.char(110, 112, 99)) then
+_0x0119 = true
+end
+elseif string.find(string.lower(_0x0044._0x0047), string.char(100, 117, 99, 107)) then
+_0x0119 = true
+end
+if _0x0119 then
+local _0x00c9 = (_0x0118 - _0x00bb)._0x00cb
+if _0x00c9 < _0x00b8 then
+_0x00b8 = _0x00c9
+_0x010d = _0x0044
+end
+end
+end
+end
+end
+return _0x010d
+end
+while _0x0062._0x00fd._0x0074 do
+local _0x010f = _0x0117()
+if _0x010f and _0x002e and _0x002e:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) then
+local _0x0110 = _0x010f._0x00ca
+local _0x0111
+_0x0111 = _0x002a._0x0096:_0x0034(function()
+if not _0x0062._0x00fd._0x0074
+or not _0x010f._0x00e6
+or not _0x010f:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100))
+or _0x010f._0x00c3._0x00c4 <= 0 then
+_0x0111:_0x0095(); return
+end
+local _0x0030 = _0x002d()
+if _0x0030 then _0x002e = _0x0030 end
+_0x00cc(_0x0110)
+end)
+while _0x0062._0x00fd._0x0074 and _0x010f._0x00e6 and _0x010f:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x010f._0x00c3._0x00c4 > 0 do
+_0x0015._0x0016(0.1)
+end
+if _0x0111 then _0x0111:_0x0095() end
+else
+if _0x002e and _0x002e:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) then
+_0x00cc(_0x0115)
+end
+_0x0015._0x0016(1)
+end
+_0x0015._0x0016()
+end
+end)
+else
+if _0x0114 then _0x0015._0x0079(_0x0114); _0x0114 = nil end
+end
+end)
+local _0x011b = nil
+_0x005a._0x005d:_0x0090(string.char(65, 117, 116, 111, 82, 101, 98, 105, 114, 116, 104), {
+_0x004e       = string.char(65, 117, 116, 111, 32, 82, 101, 98, 105, 114, 116, 104),
+_0x007d = string.char(3619, 3637, 3648, 3610, 3636, 3619, 3660, 3608, 3629, 3633, 3605, 3650, 3609, 3617, 3633, 3605, 3636, 3648, 3617, 3639, 3656, 3629, 3648, 3621, 3648, 3623, 3621, 3605, 3633, 3609),
+_0x008c     = false
+}):_0x008d(function()
+if _0x0062._0x011c._0x0074 then
+if _0x011b then return end
+_0x011b = _0x0015._0x0075(function()
+local _0x00fe = _0x0028:_0x0036(string.char(77, 111, 100, 117, 108, 101, 115)):_0x0036(string.char(78, 101, 116, 119, 111, 114, 107, 70, 114, 97, 109, 101, 119, 111, 114, 107)):_0x0036(string.char(78, 101, 116, 119, 111, 114, 107, 69, 118, 101, 110, 116))
+while _0x0062._0x011c._0x0074 do
+pcall(function()
+_0x00fe:_0x0078(string.char(102, 105, 114, 101), nil, string.char(82, 101, 98, 105, 114, 116, 104))
+end)
+_0x0015._0x0016(5)
+end
+end)
+else
+if _0x011b then _0x0015._0x0079(_0x011b); _0x011b = nil end
+end
+end)
+local _0x011e = nil
+local _0x011f = 1
+local _0x0120 = {
+_0x0121   = false,
+_0x0122 = false,
+_0x0123   = false,
+_0x0124   = false,
+}
+local function _0x0125()
+local _0x0126 = _0x0120._0x0121 or _0x0120._0x0122 or _0x0120._0x0123 or _0x0120._0x0124
+if _0x0126 then
+if not _0x011e then
+_0x011e = _0x0015._0x0075(function()
+local _0x0127 = _0x0028:_0x0036(string.char(82, 101, 109, 111, 116, 101, 115)):_0x0036(string.char(83, 121, 115, 116, 101, 109))
+while true do
+for _0x0128, _0x0129 in pairs(_0x0120) do
+if _0x0129 then
+pcall(function()
+_0x0127:_0x0078(string.char(85, 112, 83, 116, 97, 116, 115), _0x0128, _0x011f)
+end)
+end
+end
+_0x0015._0x0016(0.5)
+end
+end)
+end
+else
+if _0x011e then _0x0015._0x0079(_0x011e); _0x011e = nil end
+end
+end
+_0x005a._0x005d:_0x00a1({ _0x004e = string.char(65, 117, 116, 111, 32, 83, 116, 97, 116, 115), _0x0064 = string.char(3629, 3633, 3611, 3626, 3648, 3605, 3605, 3633, 3626, 3629, 3633, 3605, 3650, 3609, 3617, 3633, 3605, 3636) })
+_0x005a._0x005d:_0x012a(string.char(65, 117, 116, 111, 83, 116, 97, 116, 65, 109, 111, 117, 110, 116), {
+_0x004e = string.char(80, 111, 105, 110, 116, 115, 32, 116, 111, 32, 65, 100, 100, 32, 40, 3649, 3605, 3657, 3617, 3607, 3637, 3656, 3629, 3633, 3611, 3605, 3656, 3629, 3588, 3619, 3633, 3657, 3591, 41),
+_0x008c = string.char(49),
+_0x012b = true,
+_0x012c = false,
+_0x012d = string.char(3651, 3626, 3656, 3592, 3635, 3609, 3623, 3609, 3649, 3605, 3657, 3617, 32, 3648, 3594, 3656, 3609, 32, 49, 44, 32, 49, 48, 44, 32, 49, 49, 49, 49),
+}):_0x008d(function(_0x0074)
+_0x011f = tonumber(_0x0074) or 1
+end)
+_0x005a._0x005d:_0x0090(string.char(65, 117, 116, 111, 83, 116, 97, 116, 77, 101, 108, 101, 101), { _0x004e = string.char(65, 117, 116, 111, 32, 77, 101, 108, 101, 101), _0x008c = false }):_0x008d(function()
+_0x0120._0x0121 = _0x0062._0x012e._0x0074; _0x0125()
+end)
+_0x005a._0x005d:_0x0090(string.char(65, 117, 116, 111, 83, 116, 97, 116, 68, 101, 102, 101, 110, 115, 101), { _0x004e = string.char(65, 117, 116, 111, 32, 68, 101, 102, 101, 110, 115, 101), _0x008c = false }):_0x008d(function()
+_0x0120._0x0122 = _0x0062._0x012f._0x0074; _0x0125()
+end)
+_0x005a._0x005d:_0x0090(string.char(65, 117, 116, 111, 83, 116, 97, 116, 83, 119, 111, 114, 100), { _0x004e = string.char(65, 117, 116, 111, 32, 83, 119, 111, 114, 100), _0x008c = false }):_0x008d(function()
+_0x0120._0x0123 = _0x0062._0x0130._0x0074; _0x0125()
+end)
+_0x005a._0x005d:_0x0090(string.char(65, 117, 116, 111, 83, 116, 97, 116, 70, 114, 117, 105, 116), { _0x004e = string.char(65, 117, 116, 111, 32, 70, 114, 117, 105, 116, 32, 38, 32, 83, 112, 101, 99, 105, 97, 108), _0x008c = false }):_0x008d(function()
+_0x0120._0x0124 = _0x0062._0x0131._0x0074; _0x0125()
+end)
+local function _0x0135()
+local _0x00e0 = {}
+local _0x004a = {}
+pcall(function()
+local _0x0136 = require(_0x0028:_0x0036(string.char(77, 111, 100, 117, 108, 101, 115)):_0x0036(string.char(83, 112, 97, 119, 110, 66, 111, 115, 115, 76, 105, 115, 116)))
+for _0x0137, _0x0043 in pairs(_0x0136) do
+if not _0x004a[_0x0137] then
+_0x004a[_0x0137] = true
+table.insert(_0x00e0, tostring(_0x0137))
+end
+end
+end)
+table.sort(_0x00e0)
+if #_0x00e0 == 0 then table.insert(_0x00e0, string.char(40, 78, 111, 32, 66, 111, 115, 115, 101, 115, 32, 67, 111, 110, 102, 105, 103, 117, 114, 101, 100, 41)) end
+return _0x00e0
+end
+local _0x0138 = _0x0135()
+local _0x0139 = _0x0138[1] or ""
+local _0x013a = {}
+local _0x013b = nil
+local _0x013c = nil
+_0x005a._0x005e:_0x0089(string.char(66, 111, 115, 115, 83, 117, 109, 109, 111, 110, 83, 101, 108, 101, 99, 116), {
+_0x004e       = string.char(83, 101, 108, 101, 99, 116, 32, 66, 111, 115, 115, 32, 116, 111, 32, 83, 117, 109, 109, 111, 110),
+_0x008a      = _0x0138,
+_0x008b       = false,
+_0x008c     = 1,
+}):_0x008d(function(_0x0074)
+_0x0139 = _0x0074
+end)
+local function _0x013d(_0x0137)
+local _0x00c0 = string.lower(string.gsub(_0x0137, string.char(32), ""))
+for _0x0043, _0x0044 in ipairs(_0x00c1:_0x0045()) do
+if _0x0044:_0x0046(string.char(77, 111, 100, 101, 108)) and _0x0044:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x0044._0x00c3._0x00c4 > 0 then
+local _0x00c8 = string.lower(string.gsub(_0x0044._0x0047, string.char(32), ""))
+if _0x00c8 == _0x00c0 or string.find(_0x00c8, _0x00c0, 1, true) then
+return true
+end
+end
+end
+local _0x013e = _0x00c1:_0x0031(string.char(78, 112, 99, 66, 111, 115, 115))
+if _0x013e then
+for _0x0043, _0x0044 in ipairs(_0x013e:_0x0045()) do
+if _0x0044:_0x0046(string.char(77, 111, 100, 101, 108)) and _0x0044:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x0044._0x00c3._0x00c4 > 0 then
+local _0x00c8 = string.lower(string.gsub(_0x0044._0x0047, string.char(32), ""))
+if _0x00c8 == _0x00c0 or string.find(_0x00c8, _0x00c0, 1, true) then
+return true
+end
+end
+end
+end
+return false
+end
+_0x005a._0x005e:_0x0090(string.char(65, 117, 116, 111, 66, 111, 115, 115, 83, 117, 109, 109, 111, 110), {
+_0x004e       = string.char(65, 117, 116, 111, 32, 83, 117, 109, 109, 111, 110, 32, 66, 111, 115, 115),
+_0x007d = string.char(3605, 3619, 3623, 3592, 3592, 3633, 3610, 3649, 3621, 3632, 3648, 3626, 3585, 3610, 3629, 3626, 3607, 3633, 3609, 3607, 3637, 3627, 3621, 3633, 3591, 3610, 3629, 3626, 3605, 3634, 3618, 32, 40, 3652, 3617, 3656, 3626, 3649, 3611, 3617, 3605, 3629, 3609, 3610, 3629, 3626, 3617, 3637, 3594, 3637, 3623, 3636, 3605, 41),
+_0x008c     = false
+}):_0x008d(function()
+if _0x0062._0x013f._0x0074 then
+if _0x013b then return end
+_0x013b = _0x0015._0x0075(function()
+local _0x00fe = _0x0028:_0x0036(string.char(77, 111, 100, 117, 108, 101, 115)):_0x0036(string.char(78, 101, 116, 119, 111, 114, 107, 70, 114, 97, 109, 101, 119, 111, 114, 107)):_0x0036(string.char(78, 101, 116, 119, 111, 114, 107, 69, 118, 101, 110, 116))
+while _0x0062._0x013f._0x0074 do
+local _0x0092 = _0x0139
+if _0x0092 and _0x0092 ~= "" and _0x0092 ~= string.char(40, 78, 111, 32, 66, 111, 115, 115, 101, 115, 32, 67, 111, 110, 102, 105, 103, 117, 114, 101, 100, 41) then
+local _0x0140 = false
+pcall(function() _0x0140 = _0x013d(_0x0092) end)
+if not _0x0140 then
+pcall(function()
+_0x00fe:_0x0078(string.char(102, 105, 114, 101), nil, string.char(83, 117, 109, 109, 111, 110, 66, 111, 115, 115), _0x0092)
+end)
+_0x0015._0x0016(0.5)
+else
+_0x0015._0x0016(0.2)
+end
+else
+_0x0015._0x0016(1)
+end
+end
+end)
+else
+if _0x013b then _0x0015._0x0079(_0x013b); _0x013b = nil end
+end
+end)
+_0x005a._0x005e:_0x0089(string.char(66, 111, 115, 115, 70, 97, 114, 109, 83, 101, 108, 101, 99, 116), {
+_0x004e       = string.char(83, 101, 108, 101, 99, 116, 32, 66, 111, 115, 115, 40, 101, 115, 41, 32, 116, 111, 32, 70, 97, 114, 109),
+_0x007d = string.char(3648, 3621, 3639, 3629, 3585, 3610, 3629, 3626, 3607, 3637, 3656, 3605, 3657, 3629, 3591, 3585, 3634, 3619, 3623, 3634, 3619, 3660, 3611, 3652, 3611, 3605, 3637, 32, 40, 3648, 3621, 3639, 3629, 3585, 3652, 3604, 3657, 3627, 3621, 3634, 3618, 3605, 3633, 3623, 41),
+_0x008a      = _0x0138,
+_0x008b       = true,
+_0x008c     = {},
+}):_0x008d(function(_0x0074)
+_0x013a = {}
+for _0x0137, _0x0141 in pairs(_0x0074) do
+if _0x0141 then
+table.insert(_0x013a, _0x0137)
+end
+end
+end)
+local function _0x0142(_0x0137)
+local _0x00c0 = string.lower(string.gsub(_0x0137, string.char(32), ""))
+for _0x0043, _0x0044 in ipairs(_0x00c1:_0x00c2()) do
+if _0x0044:_0x0046(string.char(77, 111, 100, 101, 108)) and _0x0044:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x0044._0x00c3._0x00c4 > 0
+and _0x0044:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) and not _0x000a:_0x00c5(_0x0044) then
+local _0x00c8 = string.lower(string.gsub(_0x0044._0x0047, string.char(32), ""))
+if _0x00c8 == _0x00c0 or string.find(_0x00c8, _0x00c0, 1, true) then
+return _0x0044
+end
+end
+end
+return nil
+end
+_0x005a._0x005e:_0x0090(string.char(65, 117, 116, 111, 66, 111, 115, 115, 70, 97, 114, 109), {
+_0x004e       = string.char(65, 117, 116, 111, 32, 66, 111, 115, 115, 32, 70, 97, 114, 109),
+_0x007d = string.char(3648, 3611, 3636, 3604, 3619, 3632, 3610, 3610, 3629, 3629, 3650, 3605, 3657, 3615, 3634, 3619, 3660, 3617, 3610, 3629, 3626, 3607, 3637, 3656, 3648, 3621, 3639, 3629, 3585, 32, 40, 3623, 3634, 3619, 3660, 3611, 3649, 3621, 3632, 3605, 3637, 41),
+_0x008c     = false
+}):_0x008d(function()
+if _0x0062._0x0143._0x0074 then
+if _0x013c then return end
+_0x013c = _0x0015._0x0075(function()
+local _0x0144 = 1
+while _0x0062._0x0143._0x0074 do
+if #_0x013a > 0 then
+local _0x0137 = _0x013a[_0x0144]
+local _0x0145 = _0x0142(_0x0137)
+if _0x0145 and _0x0145:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) then
+local _0x0110 = _0x0145._0x00ca
+local _0x0111
+_0x0111 = _0x002a._0x0096:_0x0034(function()
+if not _0x0062._0x0143._0x0074 or not _0x0145._0x00e6 or not _0x0145:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) or _0x0145._0x00c3._0x00c4 <= 0 then
+_0x0111:_0x0095(); return
+end
+local _0x0030 = _0x002d()
+if _0x0030 then _0x002e = _0x0030 end
+_0x00cc(_0x0110)
+end)
+while _0x0062._0x0143._0x0074 and _0x0145._0x00e6 and _0x0145:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100)) and _0x0145._0x00c3._0x00c4 > 0 do
+_0x0015._0x0016(0.1)
+end
+if _0x0111 then _0x0111:_0x0095() end
+_0x0144 = (_0x0144 % #_0x013a) + 1
+else
+_0x0015._0x0016(2)
+_0x0144 = (_0x0144 % #_0x013a) + 1
+end
+else
+_0x0015._0x0016(1)
+end
+_0x0015._0x0016()
+end
+end)
+else
+if _0x013c then _0x0015._0x0079(_0x013c); _0x013c = nil end
+end
+end)
+local _0x0147 = {}
+local _0x0148 = {}
+local function _0x0149()
+local _0x00e0 = {}
+local _0x004a = {}
+_0x0147 = {}
+for _0x0043, _0x0044 in ipairs(_0x00c1:_0x00c2()) do
+if _0x0044:_0x0046(string.char(83, 112, 97, 119, 110, 76, 111, 99, 97, 116, 105, 111, 110)) and not _0x004a[_0x0044._0x0047] then
+_0x004a[_0x0044._0x0047] = true
+_0x0147[_0x0044._0x0047] = _0x0044._0x00d1
+table.insert(_0x00e0, _0x0044._0x0047)
+end
+end
+for _0x0043, _0x0044 in ipairs(_0x00c1:_0x00c2()) do
+if _0x0044:_0x0046(string.char(66, 97, 115, 101, 80, 97, 114, 116)) and not _0x004a[_0x0044._0x0047] then
+local lower = string.lower(_0x0044._0x0047)
+if string.find(lower, string.char(115, 112, 97, 119, 110)) or string.find(lower, string.char(105, 115, 108, 97, 110, 100)) or string.find(lower, string.char(116, 111, 119, 110)) or string.find(lower, string.char(118, 105, 108, 108, 97, 103, 101)) then
+_0x004a[_0x0044._0x0047] = true
+_0x0147[_0x0044._0x0047] = _0x0044._0x00d1
+table.insert(_0x00e0, _0x0044._0x0047)
+end
+end
+end
+table.sort(_0x00e0)
+if #_0x00e0 == 0 then table.insert(_0x00e0, string.char(40, 78, 111, 32, 76, 111, 99, 97, 116, 105, 111, 110, 115, 32, 70, 111, 117, 110, 100, 41)) end
+return _0x00e0
+end
+local function _0x014a()
+local _0x00e0 = {}
+local _0x004a = {}
+_0x0148 = {}
+local _0x014b = {
+_0x00c1:_0x0031(string.char(78, 112, 99, 66, 111, 115, 115)),
+_0x00c1:_0x0031(string.char(78, 112, 99, 80, 114, 111, 109, 112, 116)),
+_0x00c1:_0x0031(string.char(78, 112, 99, 81, 117, 101, 115, 116)),
+_0x00c1:_0x0031(string.char(78, 112, 99, 82, 97, 110, 100, 111, 109, 70, 114, 117, 105, 116)),
+_0x00c1:_0x0031(string.char(78, 112, 99, 87, 101, 97, 112, 111, 110)),
+}
+for _0x0043, _0x014c in ipairs(_0x014b) do
+if _0x014c then
+for _0x0043, _0x014d in ipairs(_0x014c:_0x0045()) do
+if _0x014d:_0x0046(string.char(77, 111, 100, 101, 108)) and not _0x004a[_0x014d._0x0047] then
+_0x004a[_0x014d._0x0047] = true
+_0x0148[_0x014d._0x0047] = _0x014d:_0x00d0()
+table.insert(_0x00e0, _0x014d._0x0047)
+end
+end
+end
+end
+for _0x0043, _0x0044 in ipairs(_0x00c1:_0x0045()) do
+if _0x0044:_0x0046(string.char(77, 111, 100, 101, 108)) and not _0x004a[_0x0044._0x0047] and not _0x000a:_0x00c5(_0x0044) then
+local _0x014e = string.lower(_0x0044._0x0047)
+if string.find(_0x014e, string.char(110, 112, 99)) then
+_0x004a[_0x0044._0x0047] = true
+_0x0148[_0x0044._0x0047] = _0x0044:_0x00d0()
+table.insert(_0x00e0, _0x0044._0x0047)
+end
+end
+end
+table.sort(_0x00e0)
+if #_0x00e0 == 0 then table.insert(_0x00e0, string.char(40, 78, 111, 32, 78, 80, 67, 115, 32, 70, 111, 117, 110, 100, 41)) end
+return _0x00e0
+end
+local _0x014f = _0x0149()
+local _0x0150 = _0x014a()
+_0x005a._0x005f:_0x0089(string.char(84, 101, 108, 101, 112, 111, 114, 116, 83, 101, 108, 101, 99, 116), {
+_0x004e       = string.char(83, 101, 108, 101, 99, 116, 32, 76, 111, 99, 97, 116, 105, 111, 110),
+_0x007d = string.char(3648, 3621, 3639, 3629, 3585, 3592, 3640, 3604, 3607, 3637, 3656, 3605, 3657, 3629, 3591, 3585, 3634, 3619, 32, 84, 101, 108, 101, 112, 111, 114, 116),
+_0x008a      = _0x014f,
+_0x008b       = false,
+_0x008c     = 1,
+})
+_0x005a._0x005f:_0x007c({
+_0x004e       = string.char(84, 101, 108, 101, 112, 111, 114, 116),
+_0x007d = string.char(3623, 3634, 3619, 3660, 3611, 3652, 3611, 3618, 3633, 3591, 3592, 3640, 3604, 3607, 3637, 3656, 3648, 3621, 3639, 3629, 3585),
+_0x007e    = function()
+local _0x0151 = _0x0062._0x0152 and _0x0062._0x0152._0x0074
+if not _0x0151 or _0x0151 == string.char(40, 78, 111, 32, 76, 111, 99, 97, 116, 105, 111, 110, 115, 32, 70, 111, 117, 110, 100, 41) then
+_0x0017:_0x0063({ _0x004e = string.char(84, 101, 108, 101, 112, 111, 114, 116), _0x0064 = string.char(80, 108, 101, 97, 115, 101, 32, 115, 101, 108, 101, 99, 116, 32, 97, 32, 108, 111, 99, 97, 116, 105, 111, 110, 32, 102, 105, 114, 115, 116, 46), _0x0065 = 3 })
+return
+end
+local _0x0153 = _0x0147[_0x0151]
+if _0x0153 and _0x002e and _0x002e:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) then
+_0x002e._0x00ca._0x00d1 = _0x0153 + _0x00bd._0x00d7(0, 5, 0)
+_0x0017:_0x0063({ _0x004e = string.char(84, 101, 108, 101, 112, 111, 114, 116), _0x0064 = string.char(84, 101, 108, 101, 112, 111, 114, 116, 101, 100, 32, 116, 111, 58, 32) .. _0x0151, _0x0065 = 3 })
+end
+end
+})
+_0x005a._0x005f:_0x00a1({ _0x004e = string.char(78, 80, 67, 32, 84, 101, 108, 101, 112, 111, 114, 116), _0x0064 = string.char(3623, 3634, 3619, 3660, 3611, 3652, 3611, 3618, 3633, 3591, 3605, 3635, 3649, 3627, 3609, 3656, 3591, 3586, 3629, 3591, 32, 78, 80, 67, 32, 3605, 3656, 3634, 3591, 3654) })
+local _0x0155 = _0x005a._0x005f:_0x0089(string.char(78, 80, 67, 83, 101, 108, 101, 99, 116), {
+_0x004e       = string.char(83, 101, 108, 101, 99, 116, 32, 78, 80, 67),
+_0x007d = string.char(3648, 3621, 3639, 3629, 3585, 32, 78, 80, 67, 32, 3607, 3637, 3656, 3605, 3657, 3629, 3591, 3585, 3634, 3619, 3623, 3634, 3619, 3660, 3611, 3652, 3611, 3627, 3634),
+_0x008a      = _0x0150,
+_0x008b       = false,
+_0x008c     = 1,
+})
+_0x005a._0x005f:_0x007c({
+_0x004e       = string.char(84, 101, 108, 101, 112, 111, 114, 116, 32, 116, 111, 32, 78, 80, 67),
+_0x007d = string.char(3623, 3634, 3619, 3660, 3611, 3652, 3611, 3627, 3634, 32, 78, 80, 67, 32, 3607, 3637, 3656, 3648, 3621, 3639, 3629, 3585),
+_0x007e    = function()
+local _0x0151 = _0x0062._0x0156 and _0x0062._0x0156._0x0074
+if not _0x0151 or _0x0151 == string.char(40, 78, 111, 32, 78, 80, 67, 115, 32, 70, 111, 117, 110, 100, 41) then
+_0x0017:_0x0063({ _0x004e = string.char(84, 101, 108, 101, 112, 111, 114, 116, 32, 78, 80, 67), _0x0064 = string.char(80, 108, 101, 97, 115, 101, 32, 115, 101, 108, 101, 99, 116, 32, 97, 110, 32, 78, 80, 67, 32, 102, 105, 114, 115, 116, 46), _0x0065 = 3 })
+return
+end
+local _0x0153 = _0x0148[_0x0151]
+if _0x0153 and _0x002e and _0x002e:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) then
+_0x002e._0x00ca._0x00d1 = _0x0153 + _0x00bd._0x00d7(0, 5, 0)
+_0x0017:_0x0063({ _0x004e = string.char(84, 101, 108, 101, 112, 111, 114, 116, 32, 78, 80, 67), _0x0064 = string.char(84, 101, 108, 101, 112, 111, 114, 116, 101, 100, 32, 116, 111, 32, 78, 80, 67, 58, 32) .. _0x0151, _0x0065 = 3 })
+end
+end
+})
+_0x005a._0x005f:_0x00a1({ _0x004e = string.char(67, 117, 115, 116, 111, 109, 32, 84, 101, 108, 101, 112, 111, 114, 116), _0x0064 = string.char(3651, 3626, 3656, 3614, 3636, 3585, 3633, 3604, 3648, 3614, 3639, 3656, 3629, 3623, 3634, 3619, 3660, 3611, 3652, 3611, 3618, 3633, 3591, 3605, 3635, 3649, 3627, 3609, 3656, 3591, 3607, 3637, 3656, 3605, 3633, 3657, 3591, 3652, 3623, 3657) })
+_0x005a._0x005f:_0x012a(string.char(84, 101, 108, 101, 112, 111, 114, 116, 88), { _0x004e = string.char(88), _0x008c = string.char(48), _0x012b = true, _0x012d = string.char(67, 111, 111, 114, 100, 105, 110, 97, 116, 101, 32, 88) })
+_0x005a._0x005f:_0x012a(string.char(84, 101, 108, 101, 112, 111, 114, 116, 89), { _0x004e = string.char(89), _0x008c = string.char(48), _0x012b = true, _0x012d = string.char(67, 111, 111, 114, 100, 105, 110, 97, 116, 101, 32, 89) })
+_0x005a._0x005f:_0x012a(string.char(84, 101, 108, 101, 112, 111, 114, 116, 90), { _0x004e = string.char(90), _0x008c = string.char(48), _0x012b = true, _0x012d = string.char(67, 111, 111, 114, 100, 105, 110, 97, 116, 101, 32, 90) })
+_0x005a._0x005f:_0x007c({
+_0x004e    = string.char(84, 101, 108, 101, 112, 111, 114, 116, 32, 116, 111, 32, 67, 111, 111, 114, 100, 105, 110, 97, 116, 101, 115),
+_0x007e = function()
+local _0x0158 = tonumber(_0x0062._0x0159._0x0074) or 0
+local _0x015a = tonumber(_0x0062._0x015b._0x0074) or 0
+local _0x015c = tonumber(_0x0062._0x015d._0x0074) or 0
+if _0x002e and _0x002e:_0x0031(string.char(72, 117, 109, 97, 110, 111, 105, 100, 82, 111, 111, 116, 80, 97, 114, 116)) then
+_0x002e._0x00ca._0x00d1 = _0x00d1._0x00d7(_0x0158, _0x015a, _0x015c)
+_0x0017:_0x0063({ _0x004e = string.char(84, 101, 108, 101, 112, 111, 114, 116), _0x0064 = (string.char(84, 101, 108, 101, 112, 111, 114, 116, 101, 100, 32, 116, 111, 58, 32, 40, 37, 46, 49, 102, 44, 32, 37, 46, 49, 102, 44, 32, 37, 46, 49, 102, 41)):format(_0x0158, _0x015a, _0x015c), _0x0065 = 3 })
+end
+end
+})
+_0x005a._0x005f:_0x00a1({ _0x004e = string.char(85, 116, 105, 108, 105, 116, 121), _0x0064 = string.char(3648, 3588, 3619, 3639, 3656, 3629, 3591, 3617, 3639, 3629, 3592, 3633, 3604, 3585, 3634, 3619, 3586, 3657, 3629, 3617, 3641, 3621, 3649, 3612, 3609, 3607, 3637, 3656) })
+_0x005a._0x005f:_0x007c({
+_0x004e       = string.char(82, 101, 102, 114, 101, 115, 104, 32, 84, 101, 108, 101, 112, 111, 114, 116, 32, 76, 105, 115, 116, 115),
+_0x007d = string.char(3650, 3627, 3621, 3604, 3592, 3640, 3604, 3623, 3634, 3619, 3660, 3611, 3649, 3621, 3632, 32, 78, 80, 67, 32, 3651, 3627, 3617, 3656, 3607, 3633, 3657, 3591, 3627, 3617, 3604, 3651, 3609, 3648, 3595, 3636, 3619, 3660, 3615, 3648, 3623, 3629, 3619, 3660),
+_0x007e    = function()
+_0x014f = _0x0149()
+_0x0062._0x0152._0x008a = _0x014f
+_0x0062._0x0152:_0x008f(_0x014f[1])
+_0x0150 = _0x014a()
+_0x0155._0x008a = _0x0150
+_0x0155:_0x008f(_0x0150[1])
+_0x0017:_0x0063({ _0x004e = string.char(82, 101, 102, 114, 101, 115, 104, 32, 67, 111, 109, 112, 108, 101, 116, 101), _0x0064 = string.char(76, 111, 99, 97, 116, 105, 111, 110, 115, 32, 38, 32, 78, 80, 67, 115, 32, 117, 112, 100, 97, 116, 101, 100, 46), _0x0065 = 3 })
+end
+})
+local _0x0160 = nil
+local _0x0161 = nil
+local function _0x0162()
+local _0x00e0 = {}
+pcall(function()
+local _0x0163 = require(_0x0028:_0x0036(string.char(77, 111, 100, 117, 108, 101, 115)):_0x0036(string.char(71, 97, 114, 97, 110, 116, 101, 101, 82, 97, 110, 100, 111, 109, 73, 116, 101, 109)))
+for _0x0092, _0x0043 in pairs(_0x0163) do
+table.insert(_0x00e0, _0x0092)
+end
+end)
+table.sort(_0x00e0)
+if #_0x00e0 == 0 then
+_0x00e0 = {string.char(65, 117, 114, 97, 32, 82, 97, 105, 110, 98, 111, 119), string.char(77, 97, 103, 105, 99, 32, 69, 118, 111, 108, 117, 116, 105, 111, 110), string.char(66, 111, 111, 107, 32, 111, 102, 32, 66, 117, 115, 111, 115, 104, 111, 107, 117, 32, 72, 97, 107, 105)}
+end
+return _0x00e0
+end
+local _0x0164 = _0x0162()
+_0x005a._0x0060:_0x00a1({ _0x004e = string.char(66, 111, 120, 32, 71, 97, 99, 104, 97, 32, 40, 3619, 3632, 3610, 3610, 3626, 3640, 3656, 3617, 3585, 3621, 3656, 3629, 3591, 41), _0x0064 = string.char(3619, 3632, 3610, 3610, 3626, 3640, 3656, 3617, 3585, 3621, 3656, 3629, 3591, 3607, 3633, 3656, 3623, 3652, 3611, 32, 3649, 3621, 3632, 3585, 3621, 3656, 3629, 3591, 3649, 3610, 3610, 3585, 3634, 3619, 3633, 3609, 3605, 3637, 3652, 3629, 3648, 3607, 3617) })
+local _0x0165 = _0x005a._0x0060:_0x0089(string.char(71, 97, 99, 104, 97, 84, 121, 112, 101, 83, 101, 108, 101, 99, 116), {
+_0x004e       = string.char(71, 97, 99, 104, 97, 32, 84, 121, 112, 101, 32, 40, 3648, 3621, 3639, 3629, 3585, 3611, 3619, 3632, 3648, 3616, 3607, 3626, 3640, 3656, 3617, 41),
+_0x007d = string.char(3648, 3621, 3639, 3629, 3585, 3592, 3635, 3609, 3623, 3609, 3585, 3621, 3656, 3629, 3591, 3607, 3637, 3656, 3605, 3657, 3629, 3591, 3585, 3634, 3619, 3626, 3640, 3656, 3617),
+_0x008a      = {string.char(120, 53), string.char(120, 49, 48), string.char(120, 49, 53)},
+_0x008b       = false,
+_0x008c     = 1,
+})
+_0x005a._0x0060:_0x0090(string.char(65, 117, 116, 111, 82, 111, 108, 108, 71, 97, 99, 104, 97), {
+_0x004e       = string.char(65, 117, 116, 111, 32, 82, 111, 108, 108, 32, 66, 111, 120, 32, 40, 3626, 3640, 3656, 3617, 3585, 3621, 3656, 3629, 3591, 3629, 3629, 3650, 3605, 3657, 41),
+_0x007d = string.char(3626, 3640, 3656, 3617, 3585, 3621, 3656, 3629, 3591, 3607, 3633, 3656, 3623, 3652, 3611, 3649, 3610, 3610, 3623, 3609, 3621, 3641, 3611),
+_0x008c     = false
+}):_0x008d(function()
+if _0x0062._0x0166._0x0074 then
+if _0x0160 then return end
+_0x0160 = _0x0015._0x0075(function()
+local _0x00fe = _0x0028:_0x0036(string.char(77, 111, 100, 117, 108, 101, 115)):_0x0036(string.char(78, 101, 116, 119, 111, 114, 107, 70, 114, 97, 109, 101, 119, 111, 114, 107)):_0x0036(string.char(78, 101, 116, 119, 111, 114, 107, 69, 118, 101, 110, 116))
+while _0x0062._0x0166._0x0074 do
+pcall(function()
+_0x00fe:_0x0078(string.char(102, 105, 114, 101), nil, string.char(82, 97, 110, 100, 111, 109, 73, 116, 101, 109), _0x0062._0x0167._0x0074)
+end)
+_0x0015._0x0016(0.5)
+end
+end)
+else
+if _0x0160 then _0x0015._0x0079(_0x0160); _0x0160 = nil end
+end
+end)
+local _0x0168 = _0x005a._0x0060:_0x0089(string.char(71, 117, 97, 114, 97, 110, 116, 101, 101, 73, 116, 101, 109, 83, 101, 108, 101, 99, 116), {
+_0x004e       = string.char(71, 117, 97, 114, 97, 110, 116, 101, 101, 100, 32, 73, 116, 101, 109, 32, 40, 3648, 3621, 3639, 3629, 3585, 3652, 3629, 3648, 3607, 3617, 3585, 3634, 3619, 3633, 3609, 3605, 3637, 41),
+_0x007d = string.char(3648, 3621, 3639, 3629, 3585, 3652, 3629, 3648, 3607, 3617, 3585, 3634, 3619, 3633, 3609, 3605, 3637, 3607, 3637, 3656, 3605, 3657, 3629, 3591, 3585, 3634, 3619, 3585, 3604, 3595, 3639, 3657, 3629, 3629, 3629, 3650, 3605, 3657),
+_0x008a      = _0x0164,
+_0x008b       = false,
+_0x008c     = 1,
+})
+_0x005a._0x0060:_0x0090(string.char(65, 117, 116, 111, 66, 117, 121, 71, 117, 97, 114, 97, 110, 116, 101, 101), {
+_0x004e       = string.char(65, 117, 116, 111, 32, 66, 117, 121, 32, 71, 117, 97, 114, 97, 110, 116, 101, 101, 100, 32, 40, 3595, 3639, 3657, 3629, 3585, 3634, 3619, 3633, 3609, 3605, 3637, 3629, 3629, 3650, 3605, 3657, 41),
+_0x007d = string.char(3595, 3639, 3657, 3629, 3652, 3629, 3648, 3607, 3617, 3585, 3634, 3619, 3633, 3609, 3605, 3637, 3607, 3637, 3656, 3648, 3621, 3639, 3629, 3585, 3649, 3610, 3610, 3623, 3609, 3621, 3641, 3611),
+_0x008c     = false
+}):_0x008d(function()
+if _0x0062._0x0169._0x0074 then
+if _0x0161 then return end
+_0x0161 = _0x0015._0x0075(function()
+local _0x00fe = _0x0028:_0x0036(string.char(77, 111, 100, 117, 108, 101, 115)):_0x0036(string.char(78, 101, 116, 119, 111, 114, 107, 70, 114, 97, 109, 101, 119, 111, 114, 107)):_0x0036(string.char(78, 101, 116, 119, 111, 114, 107, 69, 118, 101, 110, 116))
+while _0x0062._0x0169._0x0074 do
+pcall(function()
+_0x00fe:_0x0078(string.char(102, 105, 114, 101), nil, string.char(66, 117, 121, 71, 97, 114, 97, 110, 116, 101, 101, 82, 97, 110, 100, 111, 109, 73, 116, 101, 109), _0x0062._0x016a._0x0074)
+end)
+_0x0015._0x0016(0.5)
+end
+end)
+else
+if _0x0161 then _0x0015._0x0079(_0x0161); _0x0161 = nil end
+end
+end)
+_0x005a._0x0060:_0x00a1({ _0x004e = string.char(79, 112, 101, 110, 32, 85, 73, 32, 87, 105, 110, 100, 111, 119, 115, 32, 40, 3648, 3611, 3636, 3604, 3627, 3609, 3657, 3634, 3605, 3656, 3634, 3591, 32, 85, 73, 41), _0x0064 = string.char(3648, 3621, 3639, 3629, 3585, 3627, 3609, 3657, 3634, 3605, 3656, 3634, 3591, 32, 85, 73, 32, 3607, 3637, 3656, 3605, 3657, 3629, 3591, 3585, 3634, 3619, 3648, 3611, 3636, 3604, 3651, 3594, 3657, 3591, 3634, 3609, 3651, 3609, 3648, 3585, 3617) })
+local _0x016b = {
+[string.char(73, 110, 118, 101, 110, 116, 111, 114, 121, 32, 40, 3585, 3619, 3632, 3648, 3611, 3659, 3634, 3648, 3585, 3655, 3610, 3586, 3629, 3591, 41)] = string.char(70, 114, 97, 109, 101, 95, 73, 110, 118, 101, 110, 116, 111, 114, 121),
+[string.char(67, 104, 97, 114, 97, 99, 116, 101, 114, 32, 83, 116, 97, 116, 115, 32, 40, 3586, 3657, 3629, 3617, 3641, 3621, 3605, 3633, 3623, 3621, 3632, 3588, 3619, 41)] = string.char(70, 114, 97, 109, 101, 95, 83, 116, 97, 116, 115),
+[string.char(83, 104, 111, 112, 32, 40, 3619, 3657, 3634, 3609, 3588, 3657, 3634, 41)] = string.char(70, 114, 97, 109, 101, 95, 83, 104, 111, 112),
+[string.char(67, 108, 97, 115, 115, 32, 65, 98, 105, 108, 105, 116, 121, 32, 40, 3614, 3621, 3633, 3591, 3619, 3632, 3604, 3633, 3610, 3588, 3621, 3634, 3626, 41)] = string.char(70, 114, 97, 109, 101, 95, 65, 98, 105, 108, 105, 116, 121, 67, 108, 97, 115, 115),
+[string.char(66, 111, 120, 32, 71, 97, 99, 104, 97, 32, 40, 3626, 3640, 3656, 3617, 3585, 3621, 3656, 3629, 3591, 3626, 3640, 3656, 3617, 3652, 3629, 3648, 3607, 3617, 41)] = string.char(70, 114, 97, 109, 101, 95, 82, 97, 110, 100, 111, 109, 73, 116, 101, 109),
+[string.char(83, 117, 109, 109, 111, 110, 32, 66, 111, 115, 115, 32, 40, 3649, 3607, 3656, 3609, 3648, 3626, 3585, 3610, 3629, 3626, 41)] = string.char(70, 114, 97, 109, 101, 95, 83, 117, 109, 109, 111, 110, 66, 111, 115, 115),
+[string.char(73, 110, 45, 103, 97, 109, 101, 32, 84, 101, 108, 101, 112, 111, 114, 116, 32, 40, 3627, 3609, 3657, 3634, 3605, 3656, 3634, 3591, 3623, 3634, 3619, 3660, 3611, 3604, 3633, 3657, 3591, 3648, 3604, 3636, 3617, 41)] = string.char(70, 114, 97, 109, 101, 95, 84, 101, 108, 101, 112, 111, 114, 116),
+[string.char(71, 97, 109, 101, 32, 83, 101, 116, 116, 105, 110, 103, 115, 32, 40, 3605, 3633, 3657, 3591, 3588, 3656, 3634, 3604, 3633, 3657, 3591, 3648, 3604, 3636, 3617, 41)] = string.char(70, 114, 97, 109, 101, 95, 83, 101, 116, 116, 105, 110, 103),
+[string.char(84, 114, 97, 100, 101, 32, 87, 105, 110, 100, 111, 119, 32, 40, 3627, 3609, 3657, 3634, 3605, 3656, 3634, 3591, 3648, 3607, 3619, 3604, 41)] = string.char(70, 114, 97, 109, 101, 95, 84, 114, 97, 100, 101),
+[string.char(67, 114, 101, 119, 47, 65, 108, 108, 121, 32, 40, 3621, 3641, 3585, 3648, 3619, 3639, 3629, 47, 3614, 3633, 3609, 3608, 3617, 3636, 3605, 3619, 41)] = string.char(70, 114, 97, 109, 101, 95, 65, 108, 108, 121),
+}
+local _0x016c = {}
+for _0x00ef, _0x0043 in pairs(_0x016b) do
+table.insert(_0x016c, _0x00ef)
+end
+table.sort(_0x016c)
+_0x005a._0x0060:_0x0089(string.char(85, 73, 87, 105, 110, 100, 111, 119, 83, 101, 108, 101, 99, 116), {
+_0x004e       = string.char(83, 101, 108, 101, 99, 116, 32, 85, 73, 32, 87, 105, 110, 100, 111, 119, 32, 40, 3648, 3621, 3639, 3629, 3585, 3627, 3609, 3657, 3634, 3605, 3656, 3634, 3591, 32, 85, 73, 41),
+_0x007d = string.char(3648, 3621, 3639, 3629, 3585, 3627, 3609, 3657, 3634, 3605, 3656, 3634, 3591, 32, 85, 73, 32, 3607, 3637, 3656, 3605, 3657, 3629, 3591, 3585, 3634, 3619, 3648, 3611, 3636, 3604),
+_0x008a      = _0x016c,
+_0x008b       = false,
+_0x008c     = 1,
+})
+_0x005a._0x0060:_0x007c({
+_0x004e       = string.char(79, 112, 101, 110, 32, 83, 101, 108, 101, 99, 116, 101, 100, 32, 85, 73, 32, 40, 3648, 3611, 3636, 3604, 3627, 3609, 3657, 3634, 3605, 3656, 3634, 3591, 41),
+_0x007d = string.char(3648, 3611, 3636, 3604, 3651, 3594, 3657, 3591, 3634, 3609, 3627, 3609, 3657, 3634, 3605, 3656, 3634, 3591, 32, 85, 73, 32, 3607, 3637, 3656, 3648, 3621, 3639, 3629, 3585, 3586, 3638, 3657, 3609, 3617, 3634, 3610, 3609, 3627, 3609, 3657, 3634, 3592, 3629),
+_0x007e    = function()
+local _0x0151 = _0x0062._0x016d and _0x0062._0x016d._0x0074
+local _0x016e = _0x016b[_0x0151]
+if _0x016e then
+pcall(function()
+local _0x016f = _0x000c:_0x0036(string.char(80, 108, 97, 121, 101, 114, 71, 117, 105)):_0x0036(string.char(72, 85, 68))
+local _0x0002 = _0x016f:_0x0036(string.char(77, 97, 105, 110))
+local _0x0170 = _0x0002:_0x0031(_0x016e)
+if _0x0170 then
+if _0x0012()._0x0171 then
+_0x0012()._0x0171(_0x0170)
+elseif _0x0172._0x0171 then
+_0x0172._0x0171(_0x0170)
+else
+_0x0170._0x0173 = true
+end
+else
+_0x0017:_0x0063({ _0x004e = string.char(79, 112, 101, 110, 32, 85, 73), _0x0064 = string.char(67, 111, 117, 108, 100, 32, 110, 111, 116, 32, 102, 105, 110, 100, 32, 85, 73, 32, 102, 114, 97, 109, 101, 58, 32) .. _0x016e, _0x0065 = 3 })
+end
+end)
+end
+end
+})
+_0x005a._0x0060:_0x00a1({ _0x004e = string.char(67, 104, 97, 114, 97, 99, 116, 101, 114, 32, 38, 32, 71, 101, 110, 101, 114, 97, 108), _0x0064 = string.char(3585, 3634, 3619, 3605, 3633, 3657, 3591, 3588, 3656, 3634, 3605, 3633, 3623, 3621, 3632, 3588, 3619, 3649, 3621, 3632, 3615, 3633, 3591, 3585, 3660, 3594, 3633, 3609, 3607, 3633, 3656, 3623, 3652, 3611) })
+_0x005a._0x0060:_0x0090(string.char(73, 110, 102, 105, 110, 105, 116, 101, 74, 117, 109, 112), {
+_0x004e       = string.char(73, 110, 102, 105, 110, 105, 116, 101, 32, 74, 117, 109, 112),
+_0x007d = string.char(3648, 3611, 3636, 3604, 3648, 3614, 3639, 3656, 3629, 3651, 3627, 3657, 3585, 3619, 3632, 3650, 3604, 3604, 3585, 3621, 3634, 3591, 3629, 3634, 3585, 3634, 3624, 3652, 3604, 3657, 3652, 3617, 3656, 3592, 3635, 3585, 3633, 3604),
+_0x008c     = false
+}):_0x008d(function()
+if _0x0062._0x0174._0x0074 then
+_0x0029._0x0175:_0x0034(function()
+if _0x0062._0x0174._0x0074 then
+local _0x0030 = _0x000c._0x002e
+local _0x0093 = _0x0030 and _0x0030:_0x006d(string.char(72, 117, 109, 97, 110, 111, 105, 100))
+if _0x0093 then _0x0093:_0x0176(_0x0057._0x0177._0x0178) end
+end
+end)
+end
+end)
+_0x005a._0x0060:_0x0090(string.char(65, 110, 116, 105, 65, 70, 75), {
+_0x004e       = string.char(65, 110, 116, 105, 32, 65, 70, 75),
+_0x007d = string.char(3611, 3657, 3629, 3591, 3585, 3633, 3609, 3648, 3585, 3617, 3604, 3637, 3604, 3629, 3629, 3585, 3648, 3623, 3621, 3634, 3652, 3617, 3656, 3652, 3604, 3657, 3586, 3618, 3633, 3610, 3605, 3633, 3623),
+_0x008c     = true
+}):_0x008d(function()
+if _0x0062._0x0179._0x0074 then
+local _0x017a = _0x0008:_0x000b(string.char(86, 105, 114, 116, 117, 97, 108, 85, 115, 101, 114))
+_0x000c._0x017b:_0x0034(function()
+if _0x0062._0x0179._0x0074 then
+_0x017a:_0x017c(_0x017d._0x00d7(0,0), _0x00c1._0x017e._0x00d1)
+_0x0015._0x0016(1)
+_0x017a:_0x017f(_0x017d._0x00d7(0,0), _0x00c1._0x017e._0x00d1)
+end
+end)
+end
+end)
+_0x005a._0x0060:_0x007c({
+_0x004e       = string.char(82, 101, 106, 111, 105, 110, 32, 83, 101, 114, 118, 101, 114),
+_0x007d = string.char(3629, 3629, 3585, 3648, 3585, 3617, 3649, 3621, 3632, 3585, 3621, 3633, 3610, 3648, 3586, 3657, 3634, 3648, 3595, 3636, 3619, 3660, 3615, 3648, 3604, 3636, 3617, 3607, 3633, 3609, 3607, 3637),
+_0x007e    = function()
+_0x0008:_0x000b(string.char(84, 101, 108, 101, 112, 111, 114, 116, 83, 101, 114, 118, 105, 99, 101)):_0x005f(_0x0008._0x0009, _0x000c)
+end
+})
+_0x005a._0x0060:_0x007c({
+_0x004e       = string.char(67, 111, 112, 121, 32, 67, 117, 114, 114, 101, 110, 116, 32, 80, 111, 115, 105, 116, 105, 111, 110),
+_0x007d = string.char(3588, 3633, 3604, 3621, 3629, 3585, 3614, 3636, 3585, 3633, 3604, 3605, 3635, 3649, 3627, 3609, 3656, 3591, 3611, 3633, 3592, 3592, 3640, 3610, 3633, 3609, 3648, 3586, 3657, 3634, 32, 67, 108, 105, 112, 98, 111, 97, 114, 100),
+_0x007e    = function()
+local _0x00ba = _0x002f()
+if _0x00ba then
+local _0x00d3 = _0x00ba._0x00bc
+local _0x0180 = (string.char(37, 46, 50, 102, 44, 32, 37, 46, 50, 102, 44, 32, 37, 46, 50, 102)):format(_0x00d3._0x0181, _0x00d3._0x0182, _0x00d3._0x0183)
+_0x0184(_0x0180)
+_0x0017:_0x0063({ _0x004e = string.char(80, 111, 115, 105, 116, 105, 111, 110, 32, 67, 111, 112, 105, 101, 100), _0x0064 = _0x0180, _0x0065 = 4 })
+end
+end
+})
+_0x005a._0x0060:_0x00a2(string.char(87, 97, 108, 107, 83, 112, 101, 101, 100), {
+_0x004e       = string.char(87, 97, 108, 107, 32, 83, 112, 101, 101, 100),
+_0x007d = string.char(3611, 3619, 3633, 3610, 3588, 3623, 3634, 3617, 3648, 3619, 3655, 3623, 3585, 3634, 3619, 3623, 3636, 3656, 3591, 3586, 3629, 3591, 3605, 3633, 3623, 3621, 3632, 3588, 3619, 32, 40, 3588, 3656, 3634, 3604, 3633, 3657, 3591, 3648, 3604, 3636, 3617, 32, 61, 32, 49, 54, 41),
+_0x008c     = 16, _0x00a3 = 1, _0x00a4 = 250, _0x00a5 = 1,
+_0x007e    = function(_0x0044)
+local _0x0030 = _0x000c._0x002e
+local _0x0093 = _0x0030 and _0x0030:_0x006d(string.char(72, 117, 109, 97, 110, 111, 105, 100))
+if _0x0093 then _0x0093._0x0185 = _0x0044 end
+end
+})
+_0x005a._0x0060:_0x00a2(string.char(74, 117, 109, 112, 80, 111, 119, 101, 114), {
+_0x004e       = string.char(74, 117, 109, 112, 32, 80, 111, 119, 101, 114),
+_0x007d = string.char(3611, 3619, 3633, 3610, 3619, 3632, 3618, 3632, 3585, 3619, 3632, 3650, 3604, 3604, 3586, 3629, 3591, 3605, 3633, 3623, 3621, 3632, 3588, 3619, 32, 40, 3588, 3656, 3634, 3604, 3633, 3657, 3591, 3648, 3604, 3636, 3617, 32, 61, 32, 53, 48, 41),
+_0x008c     = 50, _0x00a3 = 1, _0x00a4 = 500, _0x00a5 = 1,
+_0x007e    = function(_0x0044)
+local _0x0030 = _0x000c._0x002e
+local _0x0093 = _0x0030 and _0x0030:_0x006d(string.char(72, 117, 109, 97, 110, 111, 105, 100))
+if _0x0093 then _0x0093._0x0186 = _0x0044 end
+end
+})
+_0x0018:_0x0188(_0x0017)
+_0x0019:_0x0188(_0x0017)
+_0x0019:_0x0189(_0x005a._0x0061)
+_0x0018:_0x018a(_0x005a._0x0061)
+_0x0018:_0x018b(string.char(78, 120, 72, 117, 98))
+_0x0018:_0x018c()
+_0x0019:_0x018b(string.char(78, 120, 72, 117, 98))
+local _0x0190 = _0x0008:_0x000b(string.char(67, 111, 114, 101, 71, 117, 105))
+local _0x002c = _0x0008:_0x000b(string.char(84, 119, 101, 101, 110, 83, 101, 114, 118, 105, 99, 101))
+if _0x0190:_0x0031(string.char(78, 120, 72, 117, 98, 84, 111, 103, 103, 108, 101, 66, 117, 116, 116, 111, 110, 71, 117, 105)) then
+pcall(function() _0x0190._0x0191:_0x0192() end)
+end
+local _0x0193 = _0x0194._0x00d7(string.char(83, 99, 114, 101, 101, 110, 71, 117, 105))
+_0x0193._0x0047 = string.char(78, 120, 72, 117, 98, 84, 111, 103, 103, 108, 101, 66, 117, 116, 116, 111, 110, 71, 117, 105)
+_0x0193._0x00e6 = _0x0190
+_0x0193._0x0195 = false
+local _0x0196 = string.char(114, 98, 120, 97, 115, 115, 101, 116, 105, 100, 58, 47, 47, 54, 48, 51, 49, 50, 52, 51, 53, 52, 55)
+local _0x0197 = string.char(78, 120, 72, 117, 98, 76, 111, 103, 111, 46, 106, 112, 103)
+local _0x0198 = string.char(104, 116, 116, 112, 115, 58, 47, 47, 99, 100, 110, 46, 106, 115, 100, 101, 108, 105, 118, 114, 46, 110, 101, 116, 47, 103, 104, 47, 78, 120, 72, 117, 112, 47, 78, 120, 45, 72, 117, 98, 64, 109, 97, 105, 110, 47, 102, 53, 55, 53, 54, 99, 101, 56, 45, 54, 54, 56, 51, 45, 52, 98, 101, 52, 45, 57, 56, 52, 53, 45, 50, 57, 102, 48, 54, 54, 101, 54, 52, 51, 54, 57, 46, 106, 112, 103)
+if _0x001e and _0x0199 and _0x0008._0x0026 then
+if not _0x001e(_0x0197) then
+local _0x019a, _0x019b = pcall(function() return _0x0008:_0x0026(_0x0198) end)
+if _0x019a and _0x019b and #_0x019b > 1000 and not string.find(_0x019b, string.char(84, 111, 111, 32, 77, 97, 110, 121, 32, 82, 101, 113, 117, 101, 115, 116, 115)) then
+_0x0199(_0x0197, _0x019b)
+print(string.char(91, 78, 120, 32, 72, 117, 98, 93, 32, 76, 111, 103, 111, 32, 100, 111, 119, 110, 108, 111, 97, 100, 101, 100, 32, 115, 117, 99, 99, 101, 115, 115, 102, 117, 108, 108, 121, 33))
+else
+_0x019c(string.char(91, 78, 120, 32, 72, 117, 98, 93, 32, 70, 97, 105, 108, 101, 100, 32, 116, 111, 32, 100, 111, 119, 110, 108, 111, 97, 100, 32, 108, 111, 103, 111, 32, 40, 105, 110, 118, 97, 108, 105, 100, 32, 100, 97, 116, 97, 32, 111, 114, 32, 114, 97, 116, 101, 32, 108, 105, 109, 105, 116, 101, 100, 41, 58), tostring(_0x019a))
+end
+end
+if _0x001e(_0x0197) then
+local _0x019a, _0x019d = pcall(function() return _0x019e(_0x0197) end)
+if _0x019a and _0x019d then
+_0x0196 = _0x019d
+print(string.char(91, 78, 120, 32, 72, 117, 98, 93, 32, 76, 111, 97, 100, 101, 100, 32, 99, 117, 115, 116, 111, 109, 32, 97, 115, 115, 101, 116, 32, 108, 111, 103, 111, 32, 102, 114, 111, 109, 58), _0x0197)
+else
+_0x019c(string.char(91, 78, 120, 32, 72, 117, 98, 93, 32, 70, 97, 105, 108, 101, 100, 32, 116, 111, 32, 108, 111, 97, 100, 32, 99, 117, 115, 116, 111, 109, 32, 97, 115, 115, 101, 116, 32, 108, 111, 103, 111, 58), tostring(_0x019a), tostring(_0x019d))
+end
+end
+end
+local _0x019f = _0x0194._0x00d7(string.char(73, 109, 97, 103, 101, 66, 117, 116, 116, 111, 110))
+_0x019f._0x0047 = string.char(84, 111, 103, 103, 108, 101, 66, 117, 116, 116, 111, 110)
+_0x019f._0x00e6 = _0x0193
+_0x019f._0x0051 = _0x0052._0x0053(60, 60)
+_0x019f._0x00bc = _0x0052._0x00d7(0.02, 0, 0.2, 0)
+_0x019f._0x01a0 = _0x01a1._0x01a2(15, 15, 15)
+_0x019f._0x01a3 = 0
+_0x019f._0x01a4 = _0x0196
+_0x019f._0x01a5 = _0x0057._0x01a5._0x01a6
+_0x019f._0x01a7 = false
+local _0x01a8 = _0x0194._0x00d7(string.char(85, 73, 67, 111, 114, 110, 101, 114))
+_0x01a8._0x01a9 = _0x01aa._0x00d7(0, 8)
+_0x01a8._0x00e6 = _0x019f
+local _0x01ab = _0x0194._0x00d7(string.char(85, 73, 83, 116, 114, 111, 107, 101))
+_0x01ab._0x01ac = _0x01a1._0x01a2(0, 180, 255)
+_0x01ab._0x01ad = 2
+_0x01ab._0x00e6 = _0x019f
+local _0x01af = false
+local _0x01b0, _0x01b1, _0x01b2
+local function _0x01b3(_0x01b4)
+local _0x01b5 = _0x01b4._0x00bc - _0x01b1
+local _0x01b6 = _0x0052._0x00d7(_0x01b2._0x0181._0x01b7, _0x01b2._0x0181._0x01b8 + _0x01b5._0x0181, _0x01b2._0x0182._0x01b7, _0x01b2._0x0182._0x01b8 + _0x01b5._0x0182)
+_0x002c:_0x01b9(_0x019f, _0x01ba._0x00d7(0.1, _0x0057._0x01bb._0x01bc, _0x0057._0x01bd._0x01be), {_0x00bc = _0x01b6}):_0x01bf()
+end
+_0x019f._0x01c0:_0x0034(function(_0x01b4)
+if _0x01b4._0x01c1 == _0x0057._0x01c1._0x01c2 or _0x01b4._0x01c1 == _0x0057._0x01c1._0x01c3 then
+_0x01af = true
+_0x01b1 = _0x01b4._0x00bc
+_0x01b2 = _0x019f._0x00bc
+_0x01b4._0x01c4:_0x0034(function()
+if _0x01b4._0x01c5 == _0x0057._0x01c5._0x01c6 then
+_0x01af = false
+end
+end)
+end
+end)
+_0x019f._0x01c7:_0x0034(function(_0x01b4)
+if _0x01b4._0x01c1 == _0x0057._0x01c1._0x01c8 or _0x01b4._0x01c1 == _0x0057._0x01c1._0x01c3 then
+_0x01b0 = _0x01b4
+end
+end)
+_0x0008:_0x000b(string.char(85, 115, 101, 114, 73, 110, 112, 117, 116, 83, 101, 114, 118, 105, 99, 101))._0x01c7:_0x0034(function(_0x01b4)
+if _0x01b4 == _0x01b0 and _0x01af then
+_0x01b3(_0x01b4)
+end
+end)
+_0x019f._0x01c9:_0x0034(function()
+_0x002c:_0x01b9(_0x019f, _0x01ba._0x00d7(0.2), {_0x01a0 = _0x01a1._0x01a2(30, 30, 30), _0x0051 = _0x0052._0x0053(64, 64)}):_0x01bf()
+end)
+_0x019f._0x01ca:_0x0034(function()
+_0x002c:_0x01b9(_0x019f, _0x01ba._0x00d7(0.2), {_0x01a0 = _0x01a1._0x01a2(15, 15, 15), _0x0051 = _0x0052._0x0053(60, 60)}):_0x01bf()
+end)
+_0x019f._0x01cb:_0x0034(function()
+_0x019f:_0x01cc(_0x0052._0x0053(52, 52), string.char(79, 117, 116), string.char(81, 117, 97, 100), 0.08, true, function()
+_0x019f:_0x01cc(_0x0052._0x0053(60, 60), string.char(79, 117, 116), string.char(81, 117, 97, 100), 0.08, true)
+end)
+if _0x004c then
+_0x004c:_0x01cd()
+end
+end)
+_0x004c:_0x01cf(1)
+_0x0017:_0x0063({
+_0x004e    = string.char(78, 120, 32, 72, 117, 98),
+_0x0064  = string.char(82, 101, 97, 100, 121, 33, 32, 80, 114, 101, 115, 115, 32, 82, 67, 116, 114, 108, 32, 116, 111, 32, 109, 105, 110, 105, 109, 105, 122, 101, 46),
+_0x0065 = 5
+})
+_0x0012()._0x0013 = true
+_0x0012()._0x0014 = function()
+if _0x0068 then pcall(function() _0x0068:_0x0095() end); _0x0068 = nil end
+local _0x01d1 = {
+_0x00f2, _0x00f9, _0x0113, _0x0114,
+_0x013b, _0x013c, _0x006a,
+_0x009d, _0x011e, _0x0160, _0x0161,
+_0x0069
+}
+for _0x0043, _0x0094 in ipairs(_0x01d1) do
+if _0x0094 then pcall(function() _0x0015._0x0079(_0x0094) end) end
+end
+if _0x004c then pcall(function() _0x004c:_0x0192() end) end
+if _0x0193 then pcall(function() _0x0193:_0x0192() end) end
+_0x0012()._0x0013 = nil
+_0x0012()._0x0014 = nil
+end
