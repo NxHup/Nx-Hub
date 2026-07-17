@@ -1,8 +1,3 @@
--- ============================================================
---   Nx Hub - Universal Loader & Place Router
---   By_Beemyeon
--- ============================================================
-
 local MAIN_WORLD_ID    = 119091355492870
 local DUNGEON_WORLD_ID = 82878101790702
 local currentPlaceId   = game.PlaceId
