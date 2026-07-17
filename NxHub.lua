@@ -2,6 +2,17 @@ local MAIN_WORLD_ID    = 119091355492870
 local DUNGEON_WORLD_ID = 82878101790702
 local currentPlaceId   = game.PlaceId
 
+
+if currentPlaceId ~= MAIN_WORLD_ID and currentPlaceId ~= DUNGEON_WORLD_ID then
+    local Players = game:GetService("Players")
+    if Players.LocalPlayer then
+        pcall(function()
+            Players.LocalPlayer:Kick("Nx Hub: สคริปต์นี้รองรับเฉพาะแมพ Rock Fruit เท่านั้น! (Supported Rock Fruit only!)")
+        end)
+    end
+    return
+end
+
 print("[Nx Hub Router] Current PlaceId:", currentPlaceId)
 
 if currentPlaceId == DUNGEON_WORLD_ID then
@@ -11,7 +22,7 @@ if currentPlaceId == DUNGEON_WORLD_ID then
     else
         loadstring(game:HttpGet("https://raw.githubusercontent.com/NxHup/Nx-Hub/main/NxHub_Dungeon.lua"))()
     end
-else
+elseif currentPlaceId == MAIN_WORLD_ID then
     print("[Nx Hub Router] Loading Main World Mode...")
     if isfile and isfile("NxHub_Main.lua") then
         loadfile("NxHub_Main.lua")()
