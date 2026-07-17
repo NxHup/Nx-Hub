@@ -15,18 +15,21 @@ end
 
 print("[Nx Hub Router] Current PlaceId:", currentPlaceId)
 
+local CDN_MAIN    = "https://cdn.jsdelivr.net/gh/NxHup/Nx-Hub@main/NxHub_Main.lua"
+local CDN_DUNGEON = "https://cdn.jsdelivr.net/gh/NxHup/Nx-Hub@main/NxHub_Dungeon.lua"
+
 if currentPlaceId == DUNGEON_WORLD_ID then
-    print("[Nx Hub Router] Loading Dungeon Mode...")
+    print("[Nx Hub Router] Loading Dungeon Mode via CDN...")
     if isfile and isfile("NxHub_Dungeon.lua") then
         loadfile("NxHub_Dungeon.lua")()
     else
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/NxHup/Nx-Hub/main/NxHub_Dungeon.lua"))()
+        loadstring(game:HttpGet(CDN_DUNGEON))()
     end
 elseif currentPlaceId == MAIN_WORLD_ID then
-    print("[Nx Hub Router] Loading Main World Mode...")
+    print("[Nx Hub Router] Loading Main World Mode via CDN...")
     if isfile and isfile("NxHub_Main.lua") then
         loadfile("NxHub_Main.lua")()
     else
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/NxHup/Nx-Hub/main/NxHub_Main.lua"))()
+        loadstring(game:HttpGet(CDN_MAIN))()
     end
 end
