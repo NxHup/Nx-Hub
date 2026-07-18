@@ -15,8 +15,8 @@ end
 
 print("[Nx Hub Router] Current PlaceId:", currentPlaceId)
 
-local RAW_MAIN    = "https://raw.githubusercontent.com/NxHup/Nx-Hub/main/NxHub_Main.lua?v=" .. tostring(os.time())
-local RAW_DUNGEON = "https://raw.githubusercontent.com/NxHup/Nx-Hub/main/NxHub_Dungeon.lua?v=" .. tostring(os.time())
+local RAW_MAIN    = "https://raw.githubusercontent.com/NxHup/Nx-Hub/refs/heads/main/NxHub_Main.lua?v=" .. tostring(os.time())
+local RAW_DUNGEON = "https://raw.githubusercontent.com/NxHup/Nx-Hub/refs/heads/main/NxHub_Dungeon.lua?v=" .. tostring(os.time())
 
 if currentPlaceId == DUNGEON_WORLD_ID then
     print("[Nx Hub Router] Loading Dungeon Mode via GitHub Raw...")
