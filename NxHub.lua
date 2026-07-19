@@ -1,4 +1,3 @@
--- 1. ตรวจสอบ PlaceId ผ่าน Table Router แบบ local (ป้องกันตัวแปรชนกัน)
 local NxHubRouter = {
     ["Rock Fruit Main"] = {
         ID = 119091355492870,
