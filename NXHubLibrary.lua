@@ -1,5 +1,5 @@
 -- =================================================================
--- NX HUB UI LIBRARY (100% Fluent UI Compatible + Drag & Minimize Fix)
+-- NX HUB UI LIBRARY (Built-in Floating Button & Safe Compatibility)
 -- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
@@ -117,13 +117,66 @@ function NXHub:CreateWindow(config)
         end
     end)
 
+    -- =========================================================
+    --  ปุ่มลอยอัตโนมัติ (Built-in Floating Toggle Button)
+    -- =========================================================
+    local ToggleBtn = Instance.new("TextButton")
+    ToggleBtn.Name = "NXFloatingToggle"
+    ToggleBtn.Size = UDim2.new(0, 56, 0, 56)
+    ToggleBtn.Position = UDim2.new(0, 16, 0.4, 0)
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 18, 28)
+    ToggleBtn.Text = "⚡ NX"
+    ToggleBtn.TextColor3 = Color3.fromRGB(0, 240, 255)
+    ToggleBtn.Font = Enum.Font.GothamBold
+    ToggleBtn.TextSize = 13
+    ToggleBtn.ZIndex = 999
+    ToggleBtn.Parent = ScreenGui
+
+    local ToggleCorner = Instance.new("UICorner")
+    ToggleCorner.CornerRadius = UDim.new(0, 16)
+    ToggleCorner.Parent = ToggleBtn
+
+    local ToggleStroke = Instance.new("UIStroke")
+    ToggleStroke.Color = Color3.fromRGB(0, 240, 255)
+    ToggleStroke.Thickness = 2
+    ToggleStroke.Parent = ToggleBtn
+
+    -- ระบบลากปุ่มลอย (Draggable Floating Button)
+    local floatDragging, floatStart, floatPos
+    ToggleBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            floatDragging = true
+            floatStart = input.Position
+            floatPos = ToggleBtn.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then floatDragging = false end
+            end)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if floatDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - floatStart
+            ToggleBtn.Position = UDim2.new(floatPos.X.Scale, floatPos.X.Offset + delta.X, floatPos.Y.Scale, floatPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    ToggleBtn.MouseButton1Click:Connect(function()
+        MainFrame.Visible = not MainFrame.Visible
+        if MainFrame.Visible then
+            MainFrame.Size = UDim2.new(0, 0, 0, 0)
+            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = isMaximized and MAX_SIZE or NORMAL_SIZE
+            }):Play()
+        end
+    end)
+
+    -- Topbar Header
     local Topbar = Instance.new("Frame")
     Topbar.Name = "Topbar"
     Topbar.Size = UDim2.new(1, 0, 0, 46)
     Topbar.BackgroundTransparency = 1
     Topbar.Parent = WindowBg
 
-    -- ระบบลากหน้าต่างใหญ่ (Draggable Listener)
     local dragging, dragStart, startPos
     Topbar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -429,7 +482,7 @@ function NXHub:CreateWindow(config)
     return WindowObj
 end
 
--- SaveManager Dummy Implementation for Compatibility
+-- Dummy objects for compatibility
 local SaveManager = {}
 function SaveManager:SetLibrary() end
 function SaveManager:IgnoreThemeSettings() end
@@ -442,5 +495,8 @@ local InterfaceManager = {}
 function InterfaceManager:SetLibrary() end
 function InterfaceManager:SetFolder() end
 function InterfaceManager:BuildInterfaceSection() end
+
+getgenv().SaveManager = SaveManager
+getgenv().InterfaceManager = InterfaceManager
 
 return NXHub, SaveManager, InterfaceManager
