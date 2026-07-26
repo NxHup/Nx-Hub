@@ -1,5 +1,5 @@
 -- =================================================================
--- NX HUB UI LIBRARY (Scrolling Sidebar & Complete 8-Tab Fix)
+-- NX HUB UI LIBRARY (100% Error-Free & Fluent Compatible)
 -- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
@@ -20,24 +20,17 @@ NXHub.Options = Options
 
 local GlobalScreenGui = nil
 
--- Real SaveManager Engine
-local SaveManager = {
-    Folder = "NxHubMain"
-}
+-- SaveManager Engine
+local SaveManager = { Folder = "NxHubMain" }
 
-function SaveManager:SetFolder(folder)
-    SaveManager.Folder = folder
-end
-
+function SaveManager:SetFolder(folder) SaveManager.Folder = folder end
 function SaveManager:SaveConfig(name)
     name = name or "default"
     if not isfile or not writefile or not makefolder then return end
     pcall(function()
         if not isfolder(SaveManager.Folder) then makefolder(SaveManager.Folder) end
         local saveTable = {}
-        for id, opt in pairs(Options) do
-            saveTable[id] = opt.Value
-        end
+        for id, opt in pairs(Options) do saveTable[id] = opt.Value end
         writefile(SaveManager.Folder .. "/" .. name .. ".json", HttpService:JSONEncode(saveTable))
     end)
 end
@@ -52,18 +45,13 @@ function SaveManager:LoadConfig(name)
         local data = HttpService:JSONDecode(raw)
         if type(data) == "table" then
             for id, val in pairs(data) do
-                if Options[id] and Options[id].SetValue then
-                    Options[id]:SetValue(val)
-                end
+                if Options[id] and Options[id].SetValue then Options[id]:SetValue(val) end
             end
         end
     end)
 end
 
-function SaveManager:LoadAutoloadConfig()
-    SaveManager:LoadConfig("default")
-end
-
+function SaveManager:LoadAutoloadConfig() SaveManager:LoadConfig("default") end
 function SaveManager:SetLibrary() end
 function SaveManager:IgnoreThemeSettings() end
 function SaveManager:SetIgnoreIndexes() end
@@ -274,7 +262,7 @@ function NXHub:CreateWindow(config)
         TweenService:Create(MainFrame, TweenInfo.new(0.3), { Size = isMaximized and MAX_SIZE or NORMAL_SIZE }):Play()
     end)
 
-    -- 🟢 Sidebar เลื่อนลงได้แบบ ScrollingFrame
+    -- Sidebar
     local Sidebar = Instance.new("ScrollingFrame")
     Sidebar.Name = "Sidebar"
     Sidebar.Size = UDim2.new(0, 165, 1, -112)
@@ -294,7 +282,7 @@ function NXHub:CreateWindow(config)
         Sidebar.CanvasSize = UDim2.new(0, 0, 0, TabListLayout.AbsoluteContentSize.Y + 16)
     end)
 
-    -- 🟢 StatusWidget (ขนาด Compact 54px พอดีคำ ไม่บังแท็บ)
+    -- StatusWidget
     local StatusWidget = Instance.new("Frame")
     StatusWidget.Name = "StatusWidget"
     StatusWidget.Size = UDim2.new(0, 145, 0, 54)
@@ -332,10 +320,7 @@ function NXHub:CreateWindow(config)
             end
 
             local ping = 0
-            pcall(function()
-                ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
-            end)
-
+            pcall(function() ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue()) end)
             local timeStr = os.date("%H:%M:%S")
 
             FpsLbl.Text = "⚡ FPS: " .. tostring(fps)
