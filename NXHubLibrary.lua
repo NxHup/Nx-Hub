@@ -1,5 +1,5 @@
 -- =================================================================
--- NX HUB UI LIBRARY (Fluent Sub-Description & Strict Sorting Fixed)
+-- NX HUB UI LIBRARY (Multi-Select Dropdown & Sub-Description Ready)
 -- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
@@ -117,7 +117,7 @@ function NXHub:CreateWindow(config)
         end
     end)
 
-    -- Logo Loader
+    -- Custom Logo Loader
     local logoConfig = config.Logo or config.LogoUrl or "https://cdn.jsdelivr.net/gh/NxHup/Nx-Hub@main/f5756ce8-6683-4be4-9845-29f066e64369.jpg"
     local logoAsset = nil
 
@@ -469,13 +469,15 @@ function NXHub:CreateWindow(config)
             return sliderObj
         end
 
+        -- =========================================================
+        --  AddDropdown (รองรับทั้ง Single และ Multi-Select 100%)
+        -- =========================================================
         function TabObj:AddDropdown(id, dropConfig)
             local title = dropConfig.Title or id
             local desc = dropConfig.Description or ""
             local values = dropConfig.Values or {}
             local isMulti = dropConfig.Multi or false
             local default = dropConfig.Default or 1
-            local selected = values[default] or values[1] or "None"
             local expanded = false
             local hasDesc = (desc ~= "")
 
@@ -497,28 +499,85 @@ function NXHub:CreateWindow(config)
                 DescLabel.Parent = Frame
             end
 
-            local DropBtn = Instance.new("TextButton"); DropBtn.Size = UDim2.new(0, 130, 0, 28); DropBtn.Position = UDim2.new(1, -142, 0, hasDesc and 14 or 8); DropBtn.BackgroundColor3 = Color3.fromRGB(32, 37, 56); DropBtn.Text = tostring(selected) .. " ▼"; DropBtn.TextColor3 = Color3.fromRGB(0, 240, 255); DropBtn.Font = Enum.Font.GothamBold; DropBtn.TextSize = 11; DropBtn.Parent = Frame
+            local selected = values[default] or values[1] or "None"
+            local selectedMulti = {}
+
+            if isMulti then
+                if typeof(default) == "table" then
+                    for k, v in pairs(default) do
+                        if typeof(k) == "string" then
+                            selectedMulti[k] = v
+                        else
+                            selectedMulti[v] = true
+                        end
+                    end
+                elseif typeof(default) == "number" and values[default] then
+                    selectedMulti[values[default]] = true
+                elseif typeof(default) == "string" then
+                    selectedMulti[default] = true
+                end
+            end
+
+            local count = 0
+            for k, v in pairs(selectedMulti) do if v then count = count + 1 end end
+            local initialBtnText = isMulti and (count .. " Selected ▼") or (tostring(selected) .. " ▼")
+
+            local DropBtn = Instance.new("TextButton"); DropBtn.Size = UDim2.new(0, 130, 0, 28); DropBtn.Position = UDim2.new(1, -142, 0, hasDesc and 14 or 8); DropBtn.BackgroundColor3 = Color3.fromRGB(32, 37, 56); DropBtn.Text = initialBtnText; DropBtn.TextColor3 = Color3.fromRGB(0, 240, 255); DropBtn.Font = Enum.Font.GothamBold; DropBtn.TextSize = 11; DropBtn.Parent = Frame
             local DropCorner = Instance.new("UICorner"); DropCorner.CornerRadius = UDim.new(0, 10); DropCorner.Parent = DropBtn
 
             local OptionContainer = Instance.new("Frame"); OptionContainer.Size = UDim2.new(1, -32, 0, #values * 28); OptionContainer.Position = UDim2.new(0, 16, 0, baseH + 4); OptionContainer.BackgroundTransparency = 1; OptionContainer.Parent = Frame
             local OptionLayout = Instance.new("UIListLayout"); OptionLayout.Padding = UDim.new(0, 4); OptionLayout.Parent = OptionContainer
 
             local changedFunc = nil
-            local dropObj = { Value = selected, Values = values }
+            local dropObj = { Value = isMulti and selectedMulti or selected, Values = values }
             function dropObj:OnChanged(func) changedFunc = func end
+            
             function dropObj:SetValue(val)
-                selected = val
-                dropObj.Value = val
-                DropBtn.Text = tostring(selected) .. " ▼"
-                expanded = false
-                TweenService:Create(Frame, TweenInfo.new(0.2), { Size = UDim2.new(1, 0, 0, baseH) }):Play()
-                if changedFunc then changedFunc(selected) end
+                if isMulti and typeof(val) == "table" then
+                    selectedMulti = val
+                    dropObj.Value = val
+                    local cnt = 0
+                    for k, v in pairs(selectedMulti) do if v then cnt = cnt + 1 end end
+                    DropBtn.Text = cnt .. " Selected ▼"
+                else
+                    selected = val
+                    dropObj.Value = val
+                    DropBtn.Text = tostring(selected) .. " ▼"
+                    expanded = false
+                    TweenService:Create(Frame, TweenInfo.new(0.2), { Size = UDim2.new(1, 0, 0, baseH) }):Play()
+                end
+                if changedFunc then changedFunc(dropObj.Value) end
             end
 
             for _, opt in ipairs(values) do
-                local OptBtn = Instance.new("TextButton"); OptBtn.Size = UDim2.new(1, 0, 0, 24); OptBtn.BackgroundColor3 = Color3.fromRGB(28, 32, 48); OptBtn.Text = tostring(opt); OptBtn.TextColor3 = Color3.fromRGB(200, 205, 220); OptBtn.Font = Enum.Font.GothamMedium; OptBtn.TextSize = 11; OptBtn.Parent = OptionContainer
-                local OptCorner = Instance.new("UICorner"); OptCorner.CornerRadius = UDim.new(0, 8); OptCorner.Parent = OptBtn
-                OptBtn.MouseButton1Click:Connect(function() dropObj:SetValue(opt) end)
+                local OptBtn = Instance.new("TextButton")
+                OptBtn.Size = UDim2.new(1, 0, 0, 24)
+                OptBtn.BackgroundColor3 = (isMulti and selectedMulti[opt]) and Color3.fromRGB(0, 180, 255) or Color3.fromRGB(28, 32, 48)
+                OptBtn.Text = tostring(opt)
+                OptBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
+                OptBtn.Font = Enum.Font.GothamMedium
+                OptBtn.TextSize = 11
+                OptBtn.Parent = OptionContainer
+                
+                local OptCorner = Instance.new("UICorner")
+                OptCorner.CornerRadius = UDim.new(0, 8)
+                OptCorner.Parent = OptBtn
+                
+                OptBtn.MouseButton1Click:Connect(function()
+                    if isMulti then
+                        selectedMulti[opt] = not selectedMulti[opt]
+                        OptBtn.BackgroundColor3 = selectedMulti[opt] and Color3.fromRGB(0, 180, 255) or Color3.fromRGB(28, 32, 48)
+                        
+                        local cnt = 0
+                        for k, v in pairs(selectedMulti) do if v then cnt = cnt + 1 end end
+                        DropBtn.Text = cnt .. " Selected ▼"
+                        
+                        dropObj.Value = selectedMulti
+                        if changedFunc then changedFunc(selectedMulti) end
+                    else
+                        dropObj:SetValue(opt)
+                    end
+                end)
             end
 
             DropBtn.MouseButton1Click:Connect(function()
