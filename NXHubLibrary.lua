@@ -1,5 +1,5 @@
 -- =================================================================
--- NX HUB UI LIBRARY (Multi-Select Dropdown & Sub-Description Ready)
+-- NX HUB UI LIBRARY (Automatic Canvas Scrolling & Multi-Select Fixed)
 -- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
@@ -117,7 +117,7 @@ function NXHub:CreateWindow(config)
         end
     end)
 
-    -- Custom Logo Loader
+    -- Logo Loader
     local logoConfig = config.Logo or config.LogoUrl or "https://cdn.jsdelivr.net/gh/NxHup/Nx-Hub@main/f5756ce8-6683-4be4-9845-29f066e64369.jpg"
     local logoAsset = nil
 
@@ -341,11 +341,24 @@ function NXHub:CreateWindow(config)
         Indicator.Size = UDim2.new(0, 3, 0, 20); Indicator.Position = UDim2.new(0, -10, 0.5, -10); Indicator.BackgroundColor3 = Color3.fromRGB(0, 240, 255); Indicator.Visible = false; Indicator.Parent = TabBtn
 
         local TabPage = Instance.new("ScrollingFrame")
-        TabPage.Size = UDim2.new(1, -5, 1, 0); TabPage.BackgroundTransparency = 1; TabPage.ScrollBarThickness = 3; TabPage.ScrollBarImageColor3 = Color3.fromRGB(0, 240, 255); TabPage.Visible = false; TabPage.Parent = ContentContainer
+        TabPage.Size = UDim2.new(1, -5, 1, 0)
+        TabPage.BackgroundTransparency = 1
+        TabPage.ScrollBarThickness = 3
+        TabPage.ScrollBarImageColor3 = Color3.fromRGB(0, 240, 255)
+        TabPage.Visible = false
+        TabPage.AutomaticCanvasSize = Enum.AutomaticSize.Y -- 🟢 ระบบขยายความสูงการเลื่อนอัตโนมัติ
+        TabPage.CanvasSize = UDim2.new(0, 0, 0, 0)
+        TabPage.Parent = ContentContainer
+        
         local PageLayout = Instance.new("UIListLayout")
         PageLayout.Padding = UDim.new(0, 10)
         PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
         PageLayout.Parent = TabPage
+
+        -- 🟢 คำนวณความสูงเผื่อขอบล่าง (+30px) ให้เลื่อนสุดได้สบาย
+        PageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            TabPage.CanvasSize = UDim2.new(0, 0, 0, PageLayout.AbsoluteContentSize.Y + 30)
+        end)
 
         TabBtn.MouseButton1Click:Connect(function()
             for _, t in pairs(Tabs) do t.Page.Visible = false; t.Indicator.Visible = false; t.Btn.BackgroundColor3 = Color3.fromRGB(20, 22, 34); t.Btn.TextColor3 = Color3.fromRGB(150, 155, 175) end
@@ -469,9 +482,6 @@ function NXHub:CreateWindow(config)
             return sliderObj
         end
 
-        -- =========================================================
-        --  AddDropdown (รองรับทั้ง Single และ Multi-Select 100%)
-        -- =========================================================
         function TabObj:AddDropdown(id, dropConfig)
             local title = dropConfig.Title or id
             local desc = dropConfig.Description or ""
