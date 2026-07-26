@@ -1,5 +1,5 @@
 -- =================================================================
--- NX HUB UI LIBRARY (Built-in Floating Button & Safe Compatibility)
+-- NX HUB UI LIBRARY (Built-in Custom Image Floating Button)
 -- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
@@ -118,17 +118,43 @@ function NXHub:CreateWindow(config)
     end)
 
     -- =========================================================
-    --  ปุ่มลอยอัตโนมัติ (Built-in Floating Toggle Button)
+    --  ระบบดาวน์โหลดและจัดการรูปภาพโลโก้ (Custom Logo Loader)
     -- =========================================================
-    local ToggleBtn = Instance.new("TextButton")
+    local logoConfig = config.Logo or config.LogoUrl or "https://cdn.jsdelivr.net/gh/NxHup/Nx-Hub@main/f5756ce8-6683-4be4-9845-29f066e64369.jpg"
+    local logoAsset = "rbxassetid://6031243547"
+
+    if typeof(logoConfig) == "string" then
+        if string.find(logoConfig, "http://") or string.find(logoConfig, "https://") then
+            local filename = "NXHubCustomLogo.png"
+            pcall(function()
+                if isfile and writefile and game.HttpGet then
+                    if not isfile(filename) then
+                        local imageData = game:HttpGet(logoConfig)
+                        if imageData and #imageData > 500 and not string.find(imageData, "Too Many Requests") then
+                            writefile(filename, imageData)
+                        end
+                    end
+                    if isfile(filename) and getcustomasset then
+                        logoAsset = getcustomasset(filename)
+                    end
+                end
+            end)
+        else
+            logoAsset = logoConfig
+        end
+    end
+
+    -- =========================================================
+    --  ปุ่มลอยใส่รูปโลโก้ได้ (Custom Image Floating Button)
+    -- =========================================================
+    local ToggleBtn = Instance.new("ImageButton")
     ToggleBtn.Name = "NXFloatingToggle"
     ToggleBtn.Size = UDim2.new(0, 56, 0, 56)
     ToggleBtn.Position = UDim2.new(0, 16, 0.4, 0)
     ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 18, 28)
-    ToggleBtn.Text = "⚡ NX"
-    ToggleBtn.TextColor3 = Color3.fromRGB(0, 240, 255)
-    ToggleBtn.Font = Enum.Font.GothamBold
-    ToggleBtn.TextSize = 13
+    ToggleBtn.Image = logoAsset
+    ToggleBtn.ScaleType = Enum.ScaleType.Fit
+    ToggleBtn.AutoButtonColor = false
     ToggleBtn.ZIndex = 999
     ToggleBtn.Parent = ScreenGui
 
@@ -140,6 +166,17 @@ function NXHub:CreateWindow(config)
     ToggleStroke.Color = Color3.fromRGB(0, 240, 255)
     ToggleStroke.Thickness = 2
     ToggleStroke.Parent = ToggleBtn
+
+    -- ข้อความสำรองกรณีรูปโหลดไม่ติด
+    local TextFallback = Instance.new("TextLabel")
+    TextFallback.Size = UDim2.new(1, 0, 1, 0)
+    TextFallback.BackgroundTransparency = 1
+    TextFallback.Text = "⚡ NX"
+    TextFallback.TextColor3 = Color3.fromRGB(0, 240, 255)
+    TextFallback.Font = Enum.Font.GothamBold
+    TextFallback.TextSize = 13
+    TextFallback.ZIndex = 998
+    TextFallback.Parent = ToggleBtn
 
     -- ระบบลากปุ่มลอย (Draggable Floating Button)
     local floatDragging, floatStart, floatPos
@@ -158,6 +195,13 @@ function NXHub:CreateWindow(config)
             local delta = input.Position - floatStart
             ToggleBtn.Position = UDim2.new(floatPos.X.Scale, floatPos.X.Offset + delta.X, floatPos.Y.Scale, floatPos.Y.Offset + delta.Y)
         end
+    end)
+
+    ToggleBtn.MouseEnter:Connect(function()
+        TweenService:Create(ToggleBtn, TweenInfo.new(0.2), { Size = UDim2.fromOffset(60, 60), BackgroundColor3 = Color3.fromRGB(28, 34, 54) }):Play()
+    end)
+    ToggleBtn.MouseLeave:Connect(function()
+        TweenService:Create(ToggleBtn, TweenInfo.new(0.2), { Size = UDim2.fromOffset(56, 56), BackgroundColor3 = Color3.fromRGB(15, 18, 28) }):Play()
     end)
 
     ToggleBtn.MouseButton1Click:Connect(function()
