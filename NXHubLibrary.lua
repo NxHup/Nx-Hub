@@ -1,5 +1,5 @@
 -- =================================================================
--- NX HUB UI LIBRARY (Built-in Custom Image Floating Button)
+-- NX HUB UI LIBRARY (Built-in Custom Image Floating Button - Clean)
 -- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
@@ -121,7 +121,7 @@ function NXHub:CreateWindow(config)
     --  ระบบดาวน์โหลดและจัดการรูปภาพโลโก้ (Custom Logo Loader)
     -- =========================================================
     local logoConfig = config.Logo or config.LogoUrl or "https://cdn.jsdelivr.net/gh/NxHup/Nx-Hub@main/f5756ce8-6683-4be4-9845-29f066e64369.jpg"
-    local logoAsset = "rbxassetid://6031243547"
+    local logoAsset = nil
 
     if typeof(logoConfig) == "string" then
         if string.find(logoConfig, "http://") or string.find(logoConfig, "https://") then
@@ -145,14 +145,14 @@ function NXHub:CreateWindow(config)
     end
 
     -- =========================================================
-    --  ปุ่มลอยใส่รูปโลโก้ได้ (Custom Image Floating Button)
+    --  ปุ่มลอยแสดงรูปโลโก้แบบสะอาดตา (Clean Image Floating Button)
     -- =========================================================
     local ToggleBtn = Instance.new("ImageButton")
     ToggleBtn.Name = "NXFloatingToggle"
     ToggleBtn.Size = UDim2.new(0, 56, 0, 56)
     ToggleBtn.Position = UDim2.new(0, 16, 0.4, 0)
     ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 18, 28)
-    ToggleBtn.Image = logoAsset
+    if logoAsset then ToggleBtn.Image = logoAsset end
     ToggleBtn.ScaleType = Enum.ScaleType.Fit
     ToggleBtn.AutoButtonColor = false
     ToggleBtn.ZIndex = 999
@@ -167,16 +167,18 @@ function NXHub:CreateWindow(config)
     ToggleStroke.Thickness = 2
     ToggleStroke.Parent = ToggleBtn
 
-    -- ข้อความสำรองกรณีรูปโหลดไม่ติด
-    local TextFallback = Instance.new("TextLabel")
-    TextFallback.Size = UDim2.new(1, 0, 1, 0)
-    TextFallback.BackgroundTransparency = 1
-    TextFallback.Text = "⚡ NX"
-    TextFallback.TextColor3 = Color3.fromRGB(0, 240, 255)
-    TextFallback.Font = Enum.Font.GothamBold
-    TextFallback.TextSize = 13
-    TextFallback.ZIndex = 998
-    TextFallback.Parent = ToggleBtn
+    -- แสดงตัวอักษรเฉพาะเวลาไม่มีรูปเท่านั้น
+    if not logoAsset then
+        local TextFallback = Instance.new("TextLabel")
+        TextFallback.Size = UDim2.new(1, 0, 1, 0)
+        TextFallback.BackgroundTransparency = 1
+        TextFallback.Text = "⚡ NX"
+        TextFallback.TextColor3 = Color3.fromRGB(0, 240, 255)
+        TextFallback.Font = Enum.Font.GothamBold
+        TextFallback.TextSize = 13
+        TextFallback.ZIndex = 998
+        TextFallback.Parent = ToggleBtn
+    end
 
     -- ระบบลากปุ่มลอย (Draggable Floating Button)
     local floatDragging, floatStart, floatPos
