@@ -1,5 +1,5 @@
 -- =================================================================
--- NX HUB UI LIBRARY (100% Fluent UI Syntax Compatible)
+-- NX HUB UI LIBRARY (100% Fluent UI Compatible + Drag & Minimize Fix)
 -- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
@@ -18,6 +18,45 @@ local LocalPlayer = Players.LocalPlayer
 local Options = {}
 NXHub.Options = Options
 
+local GlobalScreenGui = nil
+
+function NXHub:Notify(config)
+    local title = config.Title or "Notification"
+    local content = config.Content or ""
+    local subContent = config.SubContent or ""
+    local duration = config.Duration or 5
+    
+    if not GlobalScreenGui or not GlobalScreenGui.Parent then return end
+
+    local NotifFrame = Instance.new("Frame")
+    NotifFrame.Size = UDim2.new(0, 270, 0, subContent ~= "" and 75 or 60)
+    NotifFrame.Position = UDim2.new(1, 290, 1, -90)
+    NotifFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 32)
+    NotifFrame.ZIndex = 200
+    NotifFrame.Parent = GlobalScreenGui
+    
+    local Corner = Instance.new("UICorner"); Corner.CornerRadius = UDim.new(0, 14); Corner.Parent = NotifFrame
+    local Stroke = Instance.new("UIStroke"); Stroke.Color = Color3.fromRGB(0, 240, 255); Stroke.Thickness = 1.5; Stroke.Parent = NotifFrame
+    
+    local TitleLbl = Instance.new("TextLabel")
+    TitleLbl.Size = UDim2.new(1, -20, 0, 20); TitleLbl.Position = UDim2.new(0, 12, 0, 6); TitleLbl.BackgroundTransparency = 1; TitleLbl.Text = "🔔 " .. title; TitleLbl.TextColor3 = Color3.fromRGB(0, 240, 255); TitleLbl.Font = Enum.Font.GothamBold; TitleLbl.TextSize = 13; TitleLbl.TextXAlignment = Enum.TextXAlignment.Left; TitleLbl.ZIndex = 201; TitleLbl.Parent = NotifFrame
+    
+    local ContentLbl = Instance.new("TextLabel")
+    ContentLbl.Size = UDim2.new(1, -24, 0, 24); ContentLbl.Position = UDim2.new(0, 12, 0, 26); ContentLbl.BackgroundTransparency = 1; ContentLbl.Text = content; ContentLbl.TextColor3 = Color3.fromRGB(220, 225, 240); ContentLbl.Font = Enum.Font.GothamMedium; ContentLbl.TextSize = 11; ContentLbl.TextXAlignment = Enum.TextXAlignment.Left; ContentLbl.ZIndex = 201; ContentLbl.Parent = NotifFrame
+    
+    TweenService:Create(NotifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.new(1, -280, 1, -90) }):Play()
+    
+    if duration then
+        task.delay(duration, function()
+            if NotifFrame and NotifFrame.Parent then
+                TweenService:Create(NotifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(1, 290, 1, -90) }):Play()
+                task.wait(0.3)
+                NotifFrame:Destroy()
+            end
+        end)
+    end
+end
+
 function NXHub:CreateWindow(config)
     local titleText = config.Title or "Nx Hub"
     local subTitleText = config.SubTitle or ""
@@ -31,11 +70,11 @@ function NXHub:CreateWindow(config)
     ScreenGui.ResetOnSpawn = false
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     ScreenGui.Parent = ParentGui
+    GlobalScreenGui = ScreenGui
 
     local NORMAL_SIZE = config.Size or UDim2.new(0, 670, 0, 465)
     local MAX_SIZE = UDim2.new(0, 850, 0, 585)
     local isMaximized = false
-    local ConfigData = {}
 
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
@@ -79,9 +118,29 @@ function NXHub:CreateWindow(config)
     end)
 
     local Topbar = Instance.new("Frame")
+    Topbar.Name = "Topbar"
     Topbar.Size = UDim2.new(1, 0, 0, 46)
     Topbar.BackgroundTransparency = 1
     Topbar.Parent = WindowBg
+
+    -- ระบบลากหน้าต่างใหญ่ (Draggable Listener)
+    local dragging, dragStart, startPos
+    Topbar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
 
     local TitleLbl = Instance.new("TextLabel")
     TitleLbl.Size = UDim2.new(0, 280, 1, 0)
@@ -179,7 +238,6 @@ function NXHub:CreateWindow(config)
 
     function WindowObj:AddTab(tabConfig)
         local name = tabConfig.Title or "Tab"
-        local icon = tabConfig.Icon or ""
 
         local TabBtn = Instance.new("TextButton")
         TabBtn.Size = UDim2.new(1, 0, 0, 38); TabBtn.BackgroundColor3 = Color3.fromRGB(20, 22, 34); TabBtn.Text = name; TabBtn.TextColor3 = Color3.fromRGB(150, 155, 175); TabBtn.Font = Enum.Font.GothamMedium; TabBtn.TextSize = 12; TabBtn.TextXAlignment = Enum.TextXAlignment.Left; TabBtn.Parent = Sidebar
@@ -369,10 +427,6 @@ function NXHub:CreateWindow(config)
     function WindowObj:Dialog(dConfig) ShowDialog(dConfig) end
 
     return WindowObj
-end
-
-function NXHub:Notify(config)
-    print("[NXHub Notify]:", config.Title, "-", config.Content)
 end
 
 -- SaveManager Dummy Implementation for Compatibility
