@@ -1,6 +1,3 @@
--- =================================================================
--- NX HUB UI LIBRARY (Real-time Auto Save & Instant Load Callback)
--- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -274,9 +271,61 @@ function NXHub:CreateWindow(config)
         TweenService:Create(MainFrame, TweenInfo.new(0.3), { Size = isMaximized and MAX_SIZE or NORMAL_SIZE }):Play()
     end)
 
-    local Sidebar = Instance.new("Frame"); Sidebar.Size = UDim2.new(0, 165, 1, -46); Sidebar.Position = UDim2.new(0, 0, 0, 46); Sidebar.BackgroundTransparency = 1; Sidebar.Parent = WindowBg
+    local Sidebar = Instance.new("Frame"); Sidebar.Size = UDim2.new(0, 165, 1, -135); Sidebar.Position = UDim2.new(0, 0, 0, 46); Sidebar.BackgroundTransparency = 1; Sidebar.Parent = WindowBg
     local TabListLayout = Instance.new("UIListLayout"); TabListLayout.Padding = UDim.new(0, 6); TabListLayout.Parent = Sidebar
     local SidebarPadding = Instance.new("UIPadding"); SidebarPadding.PaddingTop = UDim.new(0, 12); SidebarPadding.PaddingLeft = UDim.new(0, 10); SidebarPadding.PaddingRight = UDim.new(0, 10); SidebarPadding.Parent = Sidebar
+
+
+    --  Server Status Widget (FPS / Ping / Server Time)
+
+    local StatusWidget = Instance.new("Frame")
+    StatusWidget.Name = "StatusWidget"
+    StatusWidget.Size = UDim2.new(0, 145, 0, 72)
+    StatusWidget.Position = UDim2.new(0, 10, 1, -82)
+    StatusWidget.BackgroundColor3 = Color3.fromRGB(15, 18, 28)
+    StatusWidget.Parent = WindowBg
+
+    local WidgetCorner = Instance.new("UICorner"); WidgetCorner.CornerRadius = UDim.new(0, 12); WidgetCorner.Parent = StatusWidget
+    local WidgetStroke = Instance.new("UIStroke"); WidgetStroke.Color = Color3.fromRGB(0, 240, 255); WidgetStroke.Thickness = 1; WidgetStroke.Transparency = 0.4; WidgetStroke.Parent = StatusWidget
+
+    local FpsLbl = Instance.new("TextLabel"); FpsLbl.Size = UDim2.new(1, -12, 0, 20); FpsLbl.Position = UDim2.new(0, 8, 0, 4); FpsLbl.BackgroundTransparency = 1; FpsLbl.Text = "⚡ FPS: --"; FpsLbl.TextColor3 = Color3.fromRGB(0, 240, 255); FpsLbl.Font = Enum.Font.GothamBold; FpsLbl.TextSize = 11; FpsLbl.TextXAlignment = Enum.TextXAlignment.Left; FpsLbl.Parent = StatusWidget
+    local PingLbl = Instance.new("TextLabel"); PingLbl.Size = UDim2.new(1, -12, 0, 20); PingLbl.Position = UDim2.new(0, 8, 0, 24); PingLbl.BackgroundTransparency = 1; PingLbl.Text = "📶 Ping: -- ms"; PingLbl.TextColor3 = Color3.fromRGB(0, 255, 150); PingLbl.Font = Enum.Font.GothamBold; PingLbl.TextSize = 11; PingLbl.TextXAlignment = Enum.TextXAlignment.Left; PingLbl.Parent = StatusWidget
+    local TimeLbl = Instance.new("TextLabel"); TimeLbl.Size = UDim2.new(1, -12, 0, 20); TimeLbl.Position = UDim2.new(0, 8, 0, 44); TimeLbl.BackgroundTransparency = 1; TimeLbl.Text = "⏱️ Time: --"; TimeLbl.TextColor3 = Color3.fromRGB(200, 180, 255); TimeLbl.Font = Enum.Font.GothamBold; TimeLbl.TextSize = 11; TimeLbl.TextXAlignment = Enum.TextXAlignment.Left; TimeLbl.Parent = StatusWidget
+
+    task.spawn(function()
+        local lastFrameTime = os.clock()
+        local frameCount = 0
+        local fps = 60
+
+        local renderConn
+        renderConn = RunService.RenderStepped:Connect(function()
+            frameCount = frameCount + 1
+            local now = os.clock()
+            if now - lastFrameTime >= 1 then
+                fps = math.floor(frameCount / (now - lastFrameTime))
+                frameCount = 0
+                lastFrameTime = now
+            end
+        end)
+
+        while task.wait(0.5) do
+            if not ScreenGui or not ScreenGui.Parent then
+                if renderConn then renderConn:Disconnect() end
+                break
+            end
+
+            local ping = 0
+            pcall(function()
+                ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+            end)
+
+            local timeStr = os.date("%H:%M:%S")
+
+            FpsLbl.Text = "⚡ FPS: " .. tostring(fps)
+            PingLbl.Text = "📶 Ping: " .. tostring(ping) .. " ms"
+            TimeLbl.Text = "⏱️ Time: " .. timeStr
+        end
+    end)
 
     local ContentContainer = Instance.new("Frame"); ContentContainer.Size = UDim2.new(1, -175, 1, -56); ContentContainer.Position = UDim2.new(0, 170, 0, 51); ContentContainer.BackgroundTransparency = 1; ContentContainer.Parent = WindowBg
 
@@ -376,7 +425,6 @@ function NXHub:CreateWindow(config)
             local changedFunc = nil
             local toggleObj = { Value = state }
             
-            -- 🟢 ปรับเปลี่ยนให้รันฟังก์ชันทันทีเมื่อตั้งค่า หรือเมื่อดึงค่า Auto Load กลับมาจากเซฟ
             function toggleObj:OnChanged(func)
                 changedFunc = func
                 if changedFunc and state ~= nil then
@@ -390,7 +438,7 @@ function NXHub:CreateWindow(config)
                 TweenService:Create(SwitchBg, TweenInfo.new(0.2), { BackgroundColor3 = state and Color3.fromRGB(0, 220, 140) or Color3.fromRGB(45, 49, 68) }):Play()
                 TweenService:Create(Knob, TweenInfo.new(0.2), { Position = state and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10) }):Play()
                 if changedFunc then pcall(function() changedFunc(state) end) end
-                SaveManager:SaveConfig("default") -- 🟢 เซฟอัตโนมัติ Real-time
+                SaveManager:SaveConfig("default")
             end
 
             ClickBtn.MouseButton1Click:Connect(function() toggleObj:SetValue(not state) end)
@@ -440,7 +488,7 @@ function NXHub:CreateWindow(config)
                 ValLabel.Text = tostring(val)
                 if callback then callback(val) end
                 if changedFunc then pcall(function() changedFunc(val) end) end
-                SaveManager:SaveConfig("default") -- 🟢 เซฟอัตโนมัติ Real-time
+                SaveManager:SaveConfig("default")
             end
 
             local function move(input)
@@ -524,7 +572,7 @@ function NXHub:CreateWindow(config)
                     TweenService:Create(Frame, TweenInfo.new(0.2), { Size = UDim2.new(1, 0, 0, baseH) }):Play()
                 end
                 if changedFunc then pcall(function() changedFunc(dropObj.Value) end) end
-                SaveManager:SaveConfig("default") -- 🟢 เซฟอัตโนมัติ Real-time
+                SaveManager:SaveConfig("default")
             end
 
             for _, opt in ipairs(values) do
