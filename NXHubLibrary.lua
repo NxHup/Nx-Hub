@@ -1,5 +1,5 @@
 -- =================================================================
--- NX HUB UI LIBRARY (Automatic Canvas Scrolling & Multi-Select Fixed)
+-- NX HUB UI LIBRARY (Real-time Auto Save & Instant Load Callback)
 -- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
@@ -19,6 +19,63 @@ local Options = {}
 NXHub.Options = Options
 
 local GlobalScreenGui = nil
+
+-- Real SaveManager Engine
+local SaveManager = {
+    Folder = "NxHubMain"
+}
+
+function SaveManager:SetFolder(folder)
+    SaveManager.Folder = folder
+end
+
+function SaveManager:SaveConfig(name)
+    name = name or "default"
+    if not isfile or not writefile or not makefolder then return end
+    pcall(function()
+        if not isfolder(SaveManager.Folder) then makefolder(SaveManager.Folder) end
+        local saveTable = {}
+        for id, opt in pairs(Options) do
+            saveTable[id] = opt.Value
+        end
+        writefile(SaveManager.Folder .. "/" .. name .. ".json", HttpService:JSONEncode(saveTable))
+    end)
+end
+
+function SaveManager:LoadConfig(name)
+    name = name or "default"
+    if not isfile or not readfile then return end
+    local path = SaveManager.Folder .. "/" .. name .. ".json"
+    if not isfile(path) then return end
+    pcall(function()
+        local raw = readfile(path)
+        local data = HttpService:JSONDecode(raw)
+        if type(data) == "table" then
+            for id, val in pairs(data) do
+                if Options[id] and Options[id].SetValue then
+                    Options[id]:SetValue(val)
+                end
+            end
+        end
+    end)
+end
+
+function SaveManager:LoadAutoloadConfig()
+    SaveManager:LoadConfig("default")
+end
+
+function SaveManager:SetLibrary() end
+function SaveManager:IgnoreThemeSettings() end
+function SaveManager:SetIgnoreIndexes() end
+function SaveManager:BuildConfigSection() end
+
+local InterfaceManager = {}
+function InterfaceManager:SetLibrary() end
+function InterfaceManager:SetFolder() end
+function InterfaceManager:BuildInterfaceSection() end
+
+getgenv().SaveManager = SaveManager
+getgenv().InterfaceManager = InterfaceManager
 
 function NXHub:Notify(config)
     local title = config.Title or "Notification"
@@ -90,15 +147,8 @@ function NXHub:CreateWindow(config)
     WindowBg.ClipsDescendants = true
     WindowBg.Parent = MainFrame
 
-    local MainCorner = Instance.new("UICorner")
-    MainCorner.CornerRadius = UDim.new(0, 20)
-    MainCorner.Parent = WindowBg
-
-    local OuterStroke = Instance.new("UIStroke")
-    OuterStroke.Color = Color3.fromRGB(0, 240, 255)
-    OuterStroke.Thickness = 1.5
-    OuterStroke.Transparency = 0.1
-    OuterStroke.Parent = WindowBg
+    local MainCorner = Instance.new("UICorner"); MainCorner.CornerRadius = UDim.new(0, 20); MainCorner.Parent = WindowBg
+    local OuterStroke = Instance.new("UIStroke"); OuterStroke.Color = Color3.fromRGB(0, 240, 255); OuterStroke.Thickness = 1.5; OuterStroke.Transparency = 0.1; OuterStroke.Parent = WindowBg
 
     local OuterGradient = Instance.new("UIGradient")
     OuterGradient.Color = ColorSequence.new({
@@ -154,36 +204,19 @@ function NXHub:CreateWindow(config)
     ToggleBtn.ZIndex = 999
     ToggleBtn.Parent = ScreenGui
 
-    local ToggleCorner = Instance.new("UICorner")
-    ToggleCorner.CornerRadius = UDim.new(0, 16)
-    ToggleCorner.Parent = ToggleBtn
-
-    local ToggleStroke = Instance.new("UIStroke")
-    ToggleStroke.Color = Color3.fromRGB(0, 240, 255)
-    ToggleStroke.Thickness = 2
-    ToggleStroke.Parent = ToggleBtn
+    local ToggleCorner = Instance.new("UICorner"); ToggleCorner.CornerRadius = UDim.new(0, 16); ToggleCorner.Parent = ToggleBtn
+    local ToggleStroke = Instance.new("UIStroke"); ToggleStroke.Color = Color3.fromRGB(0, 240, 255); ToggleStroke.Thickness = 2; ToggleStroke.Parent = ToggleBtn
 
     if not logoAsset then
         local TextFallback = Instance.new("TextLabel")
-        TextFallback.Size = UDim2.new(1, 0, 1, 0)
-        TextFallback.BackgroundTransparency = 1
-        TextFallback.Text = "⚡ NX"
-        TextFallback.TextColor3 = Color3.fromRGB(0, 240, 255)
-        TextFallback.Font = Enum.Font.GothamBold
-        TextFallback.TextSize = 13
-        TextFallback.ZIndex = 998
-        TextFallback.Parent = ToggleBtn
+        TextFallback.Size = UDim2.new(1, 0, 1, 0); TextFallback.BackgroundTransparency = 1; TextFallback.Text = "⚡ NX"; TextFallback.TextColor3 = Color3.fromRGB(0, 240, 255); TextFallback.Font = Enum.Font.GothamBold; TextFallback.TextSize = 13; TextFallback.ZIndex = 998; TextFallback.Parent = ToggleBtn
     end
 
     local floatDragging, floatStart, floatPos
     ToggleBtn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            floatDragging = true
-            floatStart = input.Position
-            floatPos = ToggleBtn.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then floatDragging = false end
-            end)
+            floatDragging = true; floatStart = input.Position; floatPos = ToggleBtn.Position
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then floatDragging = false end end)
         end
     end)
     UserInputService.InputChanged:Connect(function(input)
@@ -193,39 +226,25 @@ function NXHub:CreateWindow(config)
         end
     end)
 
-    ToggleBtn.MouseEnter:Connect(function()
-        TweenService:Create(ToggleBtn, TweenInfo.new(0.2), { Size = UDim2.fromOffset(60, 60), BackgroundColor3 = Color3.fromRGB(28, 34, 54) }):Play()
-    end)
-    ToggleBtn.MouseLeave:Connect(function()
-        TweenService:Create(ToggleBtn, TweenInfo.new(0.2), { Size = UDim2.fromOffset(56, 56), BackgroundColor3 = Color3.fromRGB(15, 18, 28) }):Play()
-    end)
+    ToggleBtn.MouseEnter:Connect(function() TweenService:Create(ToggleBtn, TweenInfo.new(0.2), { Size = UDim2.fromOffset(60, 60), BackgroundColor3 = Color3.fromRGB(28, 34, 54) }):Play() end)
+    ToggleBtn.MouseLeave:Connect(function() TweenService:Create(ToggleBtn, TweenInfo.new(0.2), { Size = UDim2.fromOffset(56, 56), BackgroundColor3 = Color3.fromRGB(15, 18, 28) }):Play() end)
 
     ToggleBtn.MouseButton1Click:Connect(function()
         MainFrame.Visible = not MainFrame.Visible
         if MainFrame.Visible then
             MainFrame.Size = UDim2.new(0, 0, 0, 0)
-            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-                Size = isMaximized and MAX_SIZE or NORMAL_SIZE
-            }):Play()
+            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = isMaximized and MAX_SIZE or NORMAL_SIZE }):Play()
         end
     end)
 
     -- Topbar Header
-    local Topbar = Instance.new("Frame")
-    Topbar.Name = "Topbar"
-    Topbar.Size = UDim2.new(1, 0, 0, 46)
-    Topbar.BackgroundTransparency = 1
-    Topbar.Parent = WindowBg
+    local Topbar = Instance.new("Frame"); Topbar.Name = "Topbar"; Topbar.Size = UDim2.new(1, 0, 0, 46); Topbar.BackgroundTransparency = 1; Topbar.Parent = WindowBg
 
     local dragging, dragStart, startPos
     Topbar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = MainFrame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
+            dragging = true; dragStart = input.Position; startPos = MainFrame.Position
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
         end
     end)
     UserInputService.InputChanged:Connect(function(input)
@@ -235,43 +254,18 @@ function NXHub:CreateWindow(config)
         end
     end)
 
-    local TitleLbl = Instance.new("TextLabel")
-    TitleLbl.Size = UDim2.new(0, 280, 1, 0)
-    TitleLbl.Position = UDim2.new(0, 18, 0, 0)
-    TitleLbl.BackgroundTransparency = 1
-    TitleLbl.Text = "<font color=\"#00f0ff\"><b>" .. titleText .. "</b></font>  <font color=\"#ff00b7\">" .. subTitleText .. "</font>"
-    TitleLbl.RichText = true
-    TitleLbl.TextSize = 16
-    TitleLbl.Font = Enum.Font.GothamBold
-    TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
-    TitleLbl.Parent = Topbar
+    local TitleLbl = Instance.new("TextLabel"); TitleLbl.Size = UDim2.new(0, 280, 1, 0); TitleLbl.Position = UDim2.new(0, 18, 0, 0); TitleLbl.BackgroundTransparency = 1; TitleLbl.Text = "<font color=\"#00f0ff\"><b>" .. titleText .. "</b></font>  <font color=\"#ff00b7\">" .. subTitleText .. "</font>"; TitleLbl.RichText = true; TitleLbl.TextSize = 16; TitleLbl.Font = Enum.Font.GothamBold; TitleLbl.TextXAlignment = Enum.TextXAlignment.Left; TitleLbl.Parent = Topbar
 
-    local ControlsFrame = Instance.new("Frame")
-    ControlsFrame.Size = UDim2.new(0, 120, 1, -4)
-    ControlsFrame.Position = UDim2.new(1, -125, 0, 2)
-    ControlsFrame.BackgroundTransparency = 1
-    ControlsFrame.Parent = Topbar
+    local ControlsFrame = Instance.new("Frame"); ControlsFrame.Size = UDim2.new(0, 120, 1, -4); ControlsFrame.Position = UDim2.new(1, -125, 0, 2); ControlsFrame.BackgroundTransparency = 1; ControlsFrame.Parent = Topbar
+    local ControlsLayout = Instance.new("UIListLayout"); ControlsLayout.FillDirection = Enum.FillDirection.Horizontal; ControlsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right; ControlsLayout.VerticalAlignment = Enum.VerticalAlignment.Center; ControlsLayout.Padding = UDim.new(0, 4); ControlsLayout.Parent = ControlsFrame
 
-    local ControlsLayout = Instance.new("UIListLayout")
-    ControlsLayout.FillDirection = Enum.FillDirection.Horizontal
-    ControlsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-    ControlsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    ControlsLayout.Padding = UDim.new(0, 4)
-    ControlsLayout.Parent = ControlsFrame
-
-    local MinBtn = Instance.new("TextButton")
-    MinBtn.Size = UDim2.new(0, 34, 0, 26)
-    MinBtn.BackgroundTransparency = 1; MinBtn.Text = "-"; MinBtn.TextColor3 = Color3.fromRGB(200, 205, 225); MinBtn.Font = Enum.Font.GothamBold; MinBtn.TextSize = 15; MinBtn.Parent = ControlsFrame
+    local MinBtn = Instance.new("TextButton"); MinBtn.Size = UDim2.new(0, 34, 0, 26); MinBtn.BackgroundTransparency = 1; MinBtn.Text = "-"; MinBtn.TextColor3 = Color3.fromRGB(200, 205, 225); MinBtn.Font = Enum.Font.GothamBold; MinBtn.TextSize = 15; MinBtn.Parent = ControlsFrame
     local MinCorner = Instance.new("UICorner"); MinCorner.CornerRadius = UDim.new(0, 8); MinCorner.Parent = MinBtn
 
-    local MaxBtn = Instance.new("TextButton")
-    MaxBtn.Size = UDim2.new(0, 34, 0, 26)
-    MaxBtn.BackgroundTransparency = 1; MaxBtn.Text = "+"; MaxBtn.TextColor3 = Color3.fromRGB(200, 205, 225); MaxBtn.Font = Enum.Font.GothamBold; MaxBtn.TextSize = 15; MaxBtn.Parent = ControlsFrame
+    local MaxBtn = Instance.new("TextButton"); MaxBtn.Size = UDim2.new(0, 34, 0, 26); MaxBtn.BackgroundTransparency = 1; MaxBtn.Text = "+"; MaxBtn.TextColor3 = Color3.fromRGB(200, 205, 225); MaxBtn.Font = Enum.Font.GothamBold; MaxBtn.TextSize = 15; MaxBtn.Parent = ControlsFrame
     local MaxCorner = Instance.new("UICorner"); MaxCorner.CornerRadius = UDim.new(0, 8); MaxCorner.Parent = MaxBtn
 
-    local CloseBtn = Instance.new("TextButton")
-    CloseBtn.Size = UDim2.new(0, 34, 0, 26)
-    CloseBtn.BackgroundTransparency = 1; CloseBtn.Text = "X"; CloseBtn.TextColor3 = Color3.fromRGB(200, 205, 225); CloseBtn.Font = Enum.Font.GothamBold; CloseBtn.TextSize = 13; CloseBtn.Parent = ControlsFrame
+    local CloseBtn = Instance.new("TextButton"); CloseBtn.Size = UDim2.new(0, 34, 0, 26); CloseBtn.BackgroundTransparency = 1; CloseBtn.Text = "X"; CloseBtn.TextColor3 = Color3.fromRGB(200, 205, 225); CloseBtn.Font = Enum.Font.GothamBold; CloseBtn.TextSize = 13; CloseBtn.Parent = ControlsFrame
     local CloseCorner = Instance.new("UICorner"); CloseCorner.CornerRadius = UDim.new(0, 8); CloseCorner.Parent = CloseBtn
 
     MinBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
@@ -280,19 +274,15 @@ function NXHub:CreateWindow(config)
         TweenService:Create(MainFrame, TweenInfo.new(0.3), { Size = isMaximized and MAX_SIZE or NORMAL_SIZE }):Play()
     end)
 
-    local Sidebar = Instance.new("Frame")
-    Sidebar.Size = UDim2.new(0, 165, 1, -46); Sidebar.Position = UDim2.new(0, 0, 0, 46); Sidebar.BackgroundTransparency = 1; Sidebar.Parent = WindowBg
+    local Sidebar = Instance.new("Frame"); Sidebar.Size = UDim2.new(0, 165, 1, -46); Sidebar.Position = UDim2.new(0, 0, 0, 46); Sidebar.BackgroundTransparency = 1; Sidebar.Parent = WindowBg
     local TabListLayout = Instance.new("UIListLayout"); TabListLayout.Padding = UDim.new(0, 6); TabListLayout.Parent = Sidebar
     local SidebarPadding = Instance.new("UIPadding"); SidebarPadding.PaddingTop = UDim.new(0, 12); SidebarPadding.PaddingLeft = UDim.new(0, 10); SidebarPadding.PaddingRight = UDim.new(0, 10); SidebarPadding.Parent = Sidebar
 
-    local ContentContainer = Instance.new("Frame")
-    ContentContainer.Size = UDim2.new(1, -175, 1, -56); ContentContainer.Position = UDim2.new(0, 170, 0, 51); ContentContainer.BackgroundTransparency = 1; ContentContainer.Parent = WindowBg
+    local ContentContainer = Instance.new("Frame"); ContentContainer.Size = UDim2.new(1, -175, 1, -56); ContentContainer.Position = UDim2.new(0, 170, 0, 51); ContentContainer.BackgroundTransparency = 1; ContentContainer.Parent = WindowBg
 
     local function ShowDialog(dConfig)
-        local Overlay = Instance.new("Frame")
-        Overlay.Size = UDim2.new(1, 0, 1, 0); Overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0); Overlay.BackgroundTransparency = 0.5; Overlay.ZIndex = 100; Overlay.Parent = WindowBg
-        local DialogBox = Instance.new("Frame")
-        DialogBox.Size = UDim2.new(0, 330, 0, 165); DialogBox.Position = UDim2.new(0.5, -165, 0.5, -82); DialogBox.BackgroundColor3 = Color3.fromRGB(22, 25, 38); DialogBox.ZIndex = 101; DialogBox.Parent = Overlay
+        local Overlay = Instance.new("Frame"); Overlay.Size = UDim2.new(1, 0, 1, 0); Overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0); Overlay.BackgroundTransparency = 0.5; Overlay.ZIndex = 100; Overlay.Parent = WindowBg
+        local DialogBox = Instance.new("Frame"); DialogBox.Size = UDim2.new(0, 330, 0, 165); DialogBox.Position = UDim2.new(0.5, -165, 0.5, -82); DialogBox.BackgroundColor3 = Color3.fromRGB(22, 25, 38); DialogBox.ZIndex = 101; DialogBox.Parent = Overlay
         local Corner = Instance.new("UICorner"); Corner.CornerRadius = UDim.new(0, 16); Corner.Parent = DialogBox
         local Stroke = Instance.new("UIStroke"); Stroke.Color = Color3.fromRGB(0, 240, 255); Stroke.Thickness = 1.5; Stroke.Parent = DialogBox
         local DTitle = Instance.new("TextLabel"); DTitle.Size = UDim2.new(1, -20, 0, 30); DTitle.Position = UDim2.new(0, 10, 0, 10); DTitle.BackgroundTransparency = 1; DTitle.Text = dConfig.Title or "Dialog"; DTitle.TextColor3 = Color3.fromRGB(0, 240, 255); DTitle.Font = Enum.Font.GothamBold; DTitle.TextSize = 15; DTitle.ZIndex = 102; DTitle.Parent = DialogBox
@@ -301,8 +291,7 @@ function NXHub:CreateWindow(config)
         local BtnLayout = Instance.new("UIListLayout"); BtnLayout.FillDirection = Enum.FillDirection.Horizontal; BtnLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center; BtnLayout.Padding = UDim.new(0, 10); BtnLayout.Parent = BtnContainer
 
         for _, btnData in ipairs(dConfig.Buttons or {}) do
-            local Btn = Instance.new("TextButton")
-            Btn.Size = UDim2.new(0.48, 0, 1, 0); Btn.BackgroundColor3 = Color3.fromRGB(34, 38, 58); Btn.Text = btnData.Title or "Button"; Btn.TextColor3 = Color3.fromRGB(255, 255, 255); Btn.Font = Enum.Font.GothamBold; Btn.TextSize = 12; Btn.ZIndex = 103; Btn.Parent = BtnContainer
+            local Btn = Instance.new("TextButton"); Btn.Size = UDim2.new(0.48, 0, 1, 0); Btn.BackgroundColor3 = Color3.fromRGB(34, 38, 58); Btn.Text = btnData.Title or "Button"; Btn.TextColor3 = Color3.fromRGB(255, 255, 255); Btn.Font = Enum.Font.GothamBold; Btn.TextSize = 12; Btn.ZIndex = 103; Btn.Parent = BtnContainer
             local BtnCorner = Instance.new("UICorner"); BtnCorner.CornerRadius = UDim.new(0, 10); BtnCorner.Parent = Btn
             Btn.MouseButton1Click:Connect(function() Overlay:Destroy(); if btnData.Callback then btnData.Callback() end end)
         end
@@ -332,30 +321,17 @@ function NXHub:CreateWindow(config)
     function WindowObj:AddTab(tabConfig)
         local name = tabConfig.Title or "Tab"
 
-        local TabBtn = Instance.new("TextButton")
-        TabBtn.Size = UDim2.new(1, 0, 0, 38); TabBtn.BackgroundColor3 = Color3.fromRGB(20, 22, 34); TabBtn.Text = name; TabBtn.TextColor3 = Color3.fromRGB(150, 155, 175); TabBtn.Font = Enum.Font.GothamMedium; TabBtn.TextSize = 12; TabBtn.TextXAlignment = Enum.TextXAlignment.Left; TabBtn.Parent = Sidebar
+        local TabBtn = Instance.new("TextButton"); TabBtn.Size = UDim2.new(1, 0, 0, 38); TabBtn.BackgroundColor3 = Color3.fromRGB(20, 22, 34); TabBtn.Text = name; TabBtn.TextColor3 = Color3.fromRGB(150, 155, 175); TabBtn.Font = Enum.Font.GothamMedium; TabBtn.TextSize = 12; TabBtn.TextXAlignment = Enum.TextXAlignment.Left; TabBtn.Parent = Sidebar
         local TabPadding = Instance.new("UIPadding"); TabPadding.PaddingLeft = UDim.new(0, 14); TabPadding.Parent = TabBtn
         local TabCorner = Instance.new("UICorner"); TabCorner.CornerRadius = UDim.new(0, 12); TabCorner.Parent = TabBtn
 
-        local Indicator = Instance.new("Frame")
-        Indicator.Size = UDim2.new(0, 3, 0, 20); Indicator.Position = UDim2.new(0, -10, 0.5, -10); Indicator.BackgroundColor3 = Color3.fromRGB(0, 240, 255); Indicator.Visible = false; Indicator.Parent = TabBtn
+        local Indicator = Instance.new("Frame"); Indicator.Size = UDim2.new(0, 3, 0, 20); Indicator.Position = UDim2.new(0, -10, 0.5, -10); Indicator.BackgroundColor3 = Color3.fromRGB(0, 240, 255); Indicator.Visible = false; Indicator.Parent = TabBtn
 
         local TabPage = Instance.new("ScrollingFrame")
-        TabPage.Size = UDim2.new(1, -5, 1, 0)
-        TabPage.BackgroundTransparency = 1
-        TabPage.ScrollBarThickness = 3
-        TabPage.ScrollBarImageColor3 = Color3.fromRGB(0, 240, 255)
-        TabPage.Visible = false
-        TabPage.AutomaticCanvasSize = Enum.AutomaticSize.Y -- 🟢 ระบบขยายความสูงการเลื่อนอัตโนมัติ
-        TabPage.CanvasSize = UDim2.new(0, 0, 0, 0)
-        TabPage.Parent = ContentContainer
+        TabPage.Size = UDim2.new(1, -5, 1, 0); TabPage.BackgroundTransparency = 1; TabPage.ScrollBarThickness = 3; TabPage.ScrollBarImageColor3 = Color3.fromRGB(0, 240, 255); TabPage.Visible = false; TabPage.AutomaticCanvasSize = Enum.AutomaticSize.Y; TabPage.CanvasSize = UDim2.new(0, 0, 0, 0); TabPage.Parent = ContentContainer
         
-        local PageLayout = Instance.new("UIListLayout")
-        PageLayout.Padding = UDim.new(0, 10)
-        PageLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        PageLayout.Parent = TabPage
+        local PageLayout = Instance.new("UIListLayout"); PageLayout.Padding = UDim.new(0, 10); PageLayout.SortOrder = Enum.SortOrder.LayoutOrder; PageLayout.Parent = TabPage
 
-        -- 🟢 คำนวณความสูงเผื่อขอบล่าง (+30px) ให้เลื่อนสุดได้สบาย
         PageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             TabPage.CanvasSize = UDim2.new(0, 0, 0, PageLayout.AbsoluteContentSize.Y + 30)
         end)
@@ -385,20 +361,10 @@ function NXHub:CreateWindow(config)
 
             local Frame = Instance.new("Frame"); Frame.Size = UDim2.new(1, 0, 0, hasDesc and 56 or 44); Frame.BackgroundColor3 = Color3.fromRGB(20, 23, 36); Frame.LayoutOrder = getNextOrder(); Frame.Parent = TabPage
             local Corner = Instance.new("UICorner"); Corner.CornerRadius = UDim.new(0, 14); Corner.Parent = Frame
-            
             local Label = Instance.new("TextLabel"); Label.Size = UDim2.new(1, -70, 0, hasDesc and 22 or 44); Label.Position = UDim2.new(0, 16, 0, hasDesc and 8 or 0); Label.BackgroundTransparency = 1; Label.Text = title; Label.TextColor3 = Color3.fromRGB(230, 235, 245); Label.Font = Enum.Font.GothamMedium; Label.TextSize = 12; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.Parent = Frame
             
             if hasDesc then
-                local DescLabel = Instance.new("TextLabel")
-                DescLabel.Size = UDim2.new(1, -70, 0, 18)
-                DescLabel.Position = UDim2.new(0, 16, 0, 28)
-                DescLabel.BackgroundTransparency = 1
-                DescLabel.Text = desc
-                DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175)
-                DescLabel.Font = Enum.Font.GothamMedium
-                DescLabel.TextSize = 10
-                DescLabel.TextXAlignment = Enum.TextXAlignment.Left
-                DescLabel.Parent = Frame
+                local DescLabel = Instance.new("TextLabel"); DescLabel.Size = UDim2.new(1, -70, 0, 18); DescLabel.Position = UDim2.new(0, 16, 0, 28); DescLabel.BackgroundTransparency = 1; DescLabel.Text = desc; DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175); DescLabel.Font = Enum.Font.GothamMedium; DescLabel.TextSize = 10; DescLabel.TextXAlignment = Enum.TextXAlignment.Left; DescLabel.Parent = Frame
             end
 
             local SwitchBg = Instance.new("Frame"); SwitchBg.Size = UDim2.new(0, 46, 0, 24); SwitchBg.Position = UDim2.new(1, -58, 0.5, -12); SwitchBg.BackgroundColor3 = state and Color3.fromRGB(0, 220, 140) or Color3.fromRGB(45, 49, 68); SwitchBg.Parent = Frame
@@ -409,13 +375,22 @@ function NXHub:CreateWindow(config)
 
             local changedFunc = nil
             local toggleObj = { Value = state }
-            function toggleObj:OnChanged(func) changedFunc = func end
+            
+            -- 🟢 ปรับเปลี่ยนให้รันฟังก์ชันทันทีเมื่อตั้งค่า หรือเมื่อดึงค่า Auto Load กลับมาจากเซฟ
+            function toggleObj:OnChanged(func)
+                changedFunc = func
+                if changedFunc and state ~= nil then
+                    task.spawn(function() pcall(function() changedFunc(state) end) end)
+                end
+            end
+            
             function toggleObj:SetValue(val)
-                state = val
-                toggleObj.Value = val
+                state = (val == true)
+                toggleObj.Value = state
                 TweenService:Create(SwitchBg, TweenInfo.new(0.2), { BackgroundColor3 = state and Color3.fromRGB(0, 220, 140) or Color3.fromRGB(45, 49, 68) }):Play()
                 TweenService:Create(Knob, TweenInfo.new(0.2), { Position = state and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10) }):Play()
-                if changedFunc then changedFunc(state) end
+                if changedFunc then pcall(function() changedFunc(state) end) end
+                SaveManager:SaveConfig("default") -- 🟢 เซฟอัตโนมัติ Real-time
             end
 
             ClickBtn.MouseButton1Click:Connect(function() toggleObj:SetValue(not state) end)
@@ -438,16 +413,7 @@ function NXHub:CreateWindow(config)
             local Label = Instance.new("TextLabel"); Label.Size = UDim2.new(1, -70, 0, 22); Label.Position = UDim2.new(0, 16, 0, 4); Label.BackgroundTransparency = 1; Label.Text = title; Label.TextColor3 = Color3.fromRGB(230, 235, 245); Label.Font = Enum.Font.GothamMedium; Label.TextSize = 12; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.Parent = Frame
             
             if hasDesc then
-                local DescLabel = Instance.new("TextLabel")
-                DescLabel.Size = UDim2.new(1, -70, 0, 18)
-                DescLabel.Position = UDim2.new(0, 16, 0, 24)
-                DescLabel.BackgroundTransparency = 1
-                DescLabel.Text = desc
-                DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175)
-                DescLabel.Font = Enum.Font.GothamMedium
-                DescLabel.TextSize = 10
-                DescLabel.TextXAlignment = Enum.TextXAlignment.Left
-                DescLabel.Parent = Frame
+                local DescLabel = Instance.new("TextLabel"); DescLabel.Size = UDim2.new(1, -70, 0, 18); DescLabel.Position = UDim2.new(0, 16, 0, 24); DescLabel.BackgroundTransparency = 1; DescLabel.Text = desc; DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175); DescLabel.Font = Enum.Font.GothamMedium; DescLabel.TextSize = 10; DescLabel.TextXAlignment = Enum.TextXAlignment.Left; DescLabel.Parent = Frame
             end
 
             local ValLabel = Instance.new("TextLabel"); ValLabel.Size = UDim2.new(0, 50, 0, 22); ValLabel.Position = UDim2.new(1, -62, 0, 4); ValLabel.BackgroundTransparency = 1; ValLabel.Text = tostring(val); ValLabel.TextColor3 = Color3.fromRGB(0, 240, 255); ValLabel.Font = Enum.Font.GothamBold; ValLabel.TextSize = 13; ValLabel.Parent = Frame
@@ -459,14 +425,22 @@ function NXHub:CreateWindow(config)
             local changedFunc = nil
             local sliding = false
             local sliderObj = { Value = val }
-            function sliderObj:OnChanged(func) changedFunc = func end
+            
+            function sliderObj:OnChanged(func)
+                changedFunc = func
+                if changedFunc and val ~= nil then
+                    task.spawn(function() pcall(function() changedFunc(val) end) end)
+                end
+            end
+            
             function sliderObj:SetValue(v)
                 val = math.clamp(v, min, max)
                 sliderObj.Value = val
                 Fill.Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
                 ValLabel.Text = tostring(val)
                 if callback then callback(val) end
-                if changedFunc then changedFunc(val) end
+                if changedFunc then pcall(function() changedFunc(val) end) end
+                SaveManager:SaveConfig("default") -- 🟢 เซฟอัตโนมัติ Real-time
             end
 
             local function move(input)
@@ -497,16 +471,7 @@ function NXHub:CreateWindow(config)
             local Label = Instance.new("TextLabel"); Label.Size = UDim2.new(1, -150, 0, hasDesc and 22 or 44); Label.Position = UDim2.new(0, 16, 0, hasDesc and 8 or 0); Label.BackgroundTransparency = 1; Label.Text = title; Label.TextColor3 = Color3.fromRGB(230, 235, 245); Label.Font = Enum.Font.GothamMedium; Label.TextSize = 12; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.Parent = Frame
             
             if hasDesc then
-                local DescLabel = Instance.new("TextLabel")
-                DescLabel.Size = UDim2.new(1, -150, 0, 18)
-                DescLabel.Position = UDim2.new(0, 16, 0, 28)
-                DescLabel.BackgroundTransparency = 1
-                DescLabel.Text = desc
-                DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175)
-                DescLabel.Font = Enum.Font.GothamMedium
-                DescLabel.TextSize = 10
-                DescLabel.TextXAlignment = Enum.TextXAlignment.Left
-                DescLabel.Parent = Frame
+                local DescLabel = Instance.new("TextLabel"); DescLabel.Size = UDim2.new(1, -150, 0, 18); DescLabel.Position = UDim2.new(0, 16, 0, 28); DescLabel.BackgroundTransparency = 1; DescLabel.Text = desc; DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175); DescLabel.Font = Enum.Font.GothamMedium; DescLabel.TextSize = 10; DescLabel.TextXAlignment = Enum.TextXAlignment.Left; DescLabel.Parent = Frame
             end
 
             local selected = values[default] or values[1] or "None"
@@ -515,11 +480,7 @@ function NXHub:CreateWindow(config)
             if isMulti then
                 if typeof(default) == "table" then
                     for k, v in pairs(default) do
-                        if typeof(k) == "string" then
-                            selectedMulti[k] = v
-                        else
-                            selectedMulti[v] = true
-                        end
+                        if typeof(k) == "string" then selectedMulti[k] = v else selectedMulti[v] = true end
                     end
                 elseif typeof(default) == "number" and values[default] then
                     selectedMulti[values[default]] = true
@@ -540,7 +501,13 @@ function NXHub:CreateWindow(config)
 
             local changedFunc = nil
             local dropObj = { Value = isMulti and selectedMulti or selected, Values = values }
-            function dropObj:OnChanged(func) changedFunc = func end
+            
+            function dropObj:OnChanged(func)
+                changedFunc = func
+                if changedFunc then
+                    task.spawn(function() pcall(function() changedFunc(dropObj.Value) end) end)
+                end
+            end
             
             function dropObj:SetValue(val)
                 if isMulti and typeof(val) == "table" then
@@ -556,34 +523,24 @@ function NXHub:CreateWindow(config)
                     expanded = false
                     TweenService:Create(Frame, TweenInfo.new(0.2), { Size = UDim2.new(1, 0, 0, baseH) }):Play()
                 end
-                if changedFunc then changedFunc(dropObj.Value) end
+                if changedFunc then pcall(function() changedFunc(dropObj.Value) end) end
+                SaveManager:SaveConfig("default") -- 🟢 เซฟอัตโนมัติ Real-time
             end
 
             for _, opt in ipairs(values) do
-                local OptBtn = Instance.new("TextButton")
-                OptBtn.Size = UDim2.new(1, 0, 0, 24)
-                OptBtn.BackgroundColor3 = (isMulti and selectedMulti[opt]) and Color3.fromRGB(0, 180, 255) or Color3.fromRGB(28, 32, 48)
-                OptBtn.Text = tostring(opt)
-                OptBtn.TextColor3 = Color3.fromRGB(200, 205, 220)
-                OptBtn.Font = Enum.Font.GothamMedium
-                OptBtn.TextSize = 11
-                OptBtn.Parent = OptionContainer
-                
-                local OptCorner = Instance.new("UICorner")
-                OptCorner.CornerRadius = UDim.new(0, 8)
-                OptCorner.Parent = OptBtn
+                local OptBtn = Instance.new("TextButton"); OptBtn.Size = UDim2.new(1, 0, 0, 24); OptBtn.BackgroundColor3 = (isMulti and selectedMulti[opt]) and Color3.fromRGB(0, 180, 255) or Color3.fromRGB(28, 32, 48); OptBtn.Text = tostring(opt); OptBtn.TextColor3 = Color3.fromRGB(200, 205, 220); OptBtn.Font = Enum.Font.GothamMedium; OptBtn.TextSize = 11; OptBtn.Parent = OptionContainer
+                local OptCorner = Instance.new("UICorner"); OptCorner.CornerRadius = UDim.new(0, 8); OptCorner.Parent = OptBtn
                 
                 OptBtn.MouseButton1Click:Connect(function()
                     if isMulti then
                         selectedMulti[opt] = not selectedMulti[opt]
                         OptBtn.BackgroundColor3 = selectedMulti[opt] and Color3.fromRGB(0, 180, 255) or Color3.fromRGB(28, 32, 48)
-                        
                         local cnt = 0
                         for k, v in pairs(selectedMulti) do if v then cnt = cnt + 1 end end
                         DropBtn.Text = cnt .. " Selected ▼"
-                        
                         dropObj.Value = selectedMulti
-                        if changedFunc then changedFunc(selectedMulti) end
+                        if changedFunc then pcall(function() changedFunc(selectedMulti) end) end
+                        SaveManager:SaveConfig("default")
                     else
                         dropObj:SetValue(opt)
                     end
@@ -614,28 +571,10 @@ function NXHub:CreateWindow(config)
             local Btn = Instance.new("TextButton"); Btn.Size = UDim2.new(1, 0, 0, hasDesc and 54 or 42); Btn.BackgroundColor3 = Color3.fromRGB(24, 28, 44); Btn.Text = ""; Btn.LayoutOrder = getNextOrder(); Btn.Parent = TabPage
             local Corner = Instance.new("UICorner"); Corner.CornerRadius = UDim.new(0, 14); Corner.Parent = Btn
             
-            local TitleLabel = Instance.new("TextLabel")
-            TitleLabel.Size = UDim2.new(1, -28, 0, hasDesc and 22 or 42)
-            TitleLabel.Position = UDim2.new(0, 14, 0, hasDesc and 6 or 0)
-            TitleLabel.BackgroundTransparency = 1
-            TitleLabel.Text = title
-            TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            TitleLabel.Font = Enum.Font.GothamBold
-            TitleLabel.TextSize = 12
-            TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-            TitleLabel.Parent = Btn
+            local TitleLabel = Instance.new("TextLabel"); TitleLabel.Size = UDim2.new(1, -28, 0, hasDesc and 22 or 42); TitleLabel.Position = UDim2.new(0, 14, 0, hasDesc and 6 or 0); TitleLabel.BackgroundTransparency = 1; TitleLabel.Text = title; TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255); TitleLabel.Font = Enum.Font.GothamBold; TitleLabel.TextSize = 12; TitleLabel.TextXAlignment = Enum.TextXAlignment.Left; TitleLabel.Parent = Btn
 
             if hasDesc then
-                local DescLabel = Instance.new("TextLabel")
-                DescLabel.Size = UDim2.new(1, -28, 0, 18)
-                DescLabel.Position = UDim2.new(0, 14, 0, 26)
-                DescLabel.BackgroundTransparency = 1
-                DescLabel.Text = desc
-                DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175)
-                DescLabel.Font = Enum.Font.GothamMedium
-                DescLabel.TextSize = 10
-                DescLabel.TextXAlignment = Enum.TextXAlignment.Left
-                DescLabel.Parent = Btn
+                local DescLabel = Instance.new("TextLabel"); DescLabel.Size = UDim2.new(1, -28, 0, 18); DescLabel.Position = UDim2.new(0, 14, 0, 26); DescLabel.BackgroundTransparency = 1; DescLabel.Text = desc; DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175); DescLabel.Font = Enum.Font.GothamMedium; DescLabel.TextSize = 10; DescLabel.TextXAlignment = Enum.TextXAlignment.Left; DescLabel.Parent = Btn
             end
 
             Btn.MouseButton1Click:Connect(function() if btnConfig.Callback then btnConfig.Callback() end end)
@@ -652,16 +591,7 @@ function NXHub:CreateWindow(config)
             local Label = Instance.new("TextLabel"); Label.Size = UDim2.new(1, -160, 0, hasDesc and 22 or 44); Label.Position = UDim2.new(0, 16, 0, hasDesc and 8 or 0); Label.BackgroundTransparency = 1; Label.Text = title; Label.TextColor3 = Color3.fromRGB(230, 235, 245); Label.Font = Enum.Font.GothamMedium; Label.TextSize = 12; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.Parent = Frame
             
             if hasDesc then
-                local DescLabel = Instance.new("TextLabel")
-                DescLabel.Size = UDim2.new(1, -160, 0, 18)
-                DescLabel.Position = UDim2.new(0, 16, 0, 28)
-                DescLabel.BackgroundTransparency = 1
-                DescLabel.Text = desc
-                DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175)
-                DescLabel.Font = Enum.Font.GothamMedium
-                DescLabel.TextSize = 10
-                DescLabel.TextXAlignment = Enum.TextXAlignment.Left
-                DescLabel.Parent = Frame
+                local DescLabel = Instance.new("TextLabel"); DescLabel.Size = UDim2.new(1, -160, 0, 18); DescLabel.Position = UDim2.new(0, 16, 0, 28); DescLabel.BackgroundTransparency = 1; DescLabel.Text = desc; DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175); DescLabel.Font = Enum.Font.GothamMedium; DescLabel.TextSize = 10; DescLabel.TextXAlignment = Enum.TextXAlignment.Left; DescLabel.Parent = Frame
             end
 
             local TextBox = Instance.new("TextBox"); TextBox.Size = UDim2.new(0, 140, 0, 28); TextBox.Position = UDim2.new(1, -152, 0.5, -14); TextBox.BackgroundColor3 = Color3.fromRGB(14, 16, 26); TextBox.Text = val; TextBox.TextColor3 = Color3.fromRGB(0, 240, 255); TextBox.Font = Enum.Font.GothamMedium; TextBox.TextSize = 11; TextBox.Parent = Frame
@@ -669,12 +599,19 @@ function NXHub:CreateWindow(config)
 
             local changedFunc = nil
             local inputObj = { Value = val }
-            function inputObj:OnChanged(func) changedFunc = func end
+            
+            function inputObj:OnChanged(func)
+                changedFunc = func
+                if changedFunc and val ~= nil then
+                    task.spawn(function() pcall(function() changedFunc(val) end) end)
+                end
+            end
 
             TextBox:GetPropertyChangedSignal("Text"):Connect(function()
                 if inputConfig.Numeric then TextBox.Text = TextBox.Text:gsub("%D+", "") end
                 inputObj.Value = TextBox.Text
-                if changedFunc then changedFunc(TextBox.Text) end
+                if changedFunc then pcall(function() changedFunc(TextBox.Text) end) end
+                SaveManager:SaveConfig("default")
             end)
 
             Options[id] = inputObj
@@ -690,22 +627,5 @@ function NXHub:CreateWindow(config)
 
     return WindowObj
 end
-
--- Dummy objects for compatibility
-local SaveManager = {}
-function SaveManager:SetLibrary() end
-function SaveManager:IgnoreThemeSettings() end
-function SaveManager:SetIgnoreIndexes() end
-function SaveManager:SetFolder() end
-function SaveManager:BuildConfigSection() end
-function SaveManager:LoadAutoloadConfig() end
-
-local InterfaceManager = {}
-function InterfaceManager:SetLibrary() end
-function InterfaceManager:SetFolder() end
-function InterfaceManager:BuildInterfaceSection() end
-
-getgenv().SaveManager = SaveManager
-getgenv().InterfaceManager = InterfaceManager
 
 return NXHub, SaveManager, InterfaceManager
