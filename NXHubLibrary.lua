@@ -1,5 +1,5 @@
 -- =================================================================
--- NX HUB UI LIBRARY จะมาดูหาบิดาท่านหรอรู้นะ
+-- NX HUB UI LIBRARY จะมาดูหาบิดาท่านหรอรู้นะ....
 -- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
@@ -20,7 +20,7 @@ NXHub.Options = Options
 
 local GlobalScreenGui = nil
 
--- SaveManager Engine
+-- Failsafe SaveManager Engine
 local SaveManager = { Folder = "NxHubMain" }
 
 function SaveManager:SetFolder(folder) SaveManager.Folder = folder end
@@ -61,6 +61,7 @@ local InterfaceManager = {}
 function InterfaceManager:SetLibrary() end
 function InterfaceManager:SetFolder() end
 function InterfaceManager:BuildInterfaceSection() end
+
 
 getgenv().SaveManager = SaveManager
 getgenv().InterfaceManager = InterfaceManager
@@ -613,7 +614,7 @@ function NXHub:CreateWindow(config)
             local PContent = Instance.new("TextLabel"); PContent.Size = UDim2.new(1, -28, 0, 28); PContent.Position = UDim2.new(0, 14, 0, 28); PContent.BackgroundTransparency = 1; PContent.Text = pConfig.Content or ""; PContent.TextColor3 = Color3.fromRGB(200, 205, 220); PContent.Font = Enum.Font.GothamMedium; PContent.TextSize = 11; PContent.TextWrapped = true; PContent.TextXAlignment = Enum.TextXAlignment.Left; PContent.Parent = Frame
         end
 
-  
+        -- AddButton (Action Button)
         function TabObj:AddButton(btnConfig)
             local title = btnConfig.Title or "Button"
             local desc = btnConfig.Description or ""
@@ -654,7 +655,6 @@ function NXHub:CreateWindow(config)
                 DescLabel.Parent = Btn
             end
 
-       
             local ActionBadge = Instance.new("Frame")
             ActionBadge.Size = UDim2.new(0, 80, 0, 26)
             ActionBadge.Position = UDim2.new(1, -94, 0.5, -13)
@@ -672,7 +672,6 @@ function NXHub:CreateWindow(config)
             BadgeText.TextSize = 11
             BadgeText.Parent = ActionBadge
 
-            -- Hover & Click Animations
             Btn.MouseEnter:Connect(function()
                 TweenService:Create(Btn, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(30, 36, 56) }):Play()
                 TweenService:Create(Stroke, TweenInfo.new(0.2), { Transparency = 0.2 }):Play()
@@ -716,4 +715,29 @@ function NXHub:CreateWindow(config)
             function inputObj:OnChanged(func)
                 changedFunc = func
                 if changedFunc and val ~= nil then
-                    task.spawn(
+                    task.spawn(function() pcall(function() changedFunc(val) end) end)
+                end
+            end
+
+            TextBox:GetPropertyChangedSignal("Text"):Connect(function()
+                if inputConfig.Numeric then TextBox.Text = TextBox.Text:gsub("%D+", "") end
+                inputObj.Value = TextBox.Text
+                if changedFunc then pcall(function() changedFunc(TextBox.Text) end) end
+                SaveManager:SaveConfig("default")
+            end)
+
+            Options[id] = inputObj
+            return inputObj
+        end
+
+        return TabObj
+    end
+
+    function WindowObj:SelectTab(idx) end
+    function WindowObj:Minimize() MainFrame.Visible = not MainFrame.Visible end
+    function WindowObj:Dialog(dConfig) ShowDialog(dConfig) end
+
+    return WindowObj
+end
+
+return NXHub, SaveManager, InterfaceManager
