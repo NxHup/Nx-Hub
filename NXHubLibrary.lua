@@ -1,5 +1,5 @@
 -- =================================================================
--- NX HUB UI LIBRARY (100% Error-Free & Fluent Compatible)
+-- NX HUB UI LIBRARY จะมาดูหาบิดาท่านหรอรู้นะ
 -- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
@@ -613,21 +613,84 @@ function NXHub:CreateWindow(config)
             local PContent = Instance.new("TextLabel"); PContent.Size = UDim2.new(1, -28, 0, 28); PContent.Position = UDim2.new(0, 14, 0, 28); PContent.BackgroundTransparency = 1; PContent.Text = pConfig.Content or ""; PContent.TextColor3 = Color3.fromRGB(200, 205, 220); PContent.Font = Enum.Font.GothamMedium; PContent.TextSize = 11; PContent.TextWrapped = true; PContent.TextXAlignment = Enum.TextXAlignment.Left; PContent.Parent = Frame
         end
 
+  
         function TabObj:AddButton(btnConfig)
             local title = btnConfig.Title or "Button"
             local desc = btnConfig.Description or ""
             local hasDesc = (desc ~= "")
 
-            local Btn = Instance.new("TextButton"); Btn.Size = UDim2.new(1, 0, 0, hasDesc and 54 or 42); Btn.BackgroundColor3 = Color3.fromRGB(24, 28, 44); Btn.Text = ""; Btn.LayoutOrder = getNextOrder(); Btn.Parent = TabPage
+            local Btn = Instance.new("TextButton")
+            Btn.Size = UDim2.new(1, 0, 0, hasDesc and 56 or 44)
+            Btn.BackgroundColor3 = Color3.fromRGB(22, 26, 40)
+            Btn.Text = ""
+            Btn.AutoButtonColor = false
+            Btn.LayoutOrder = getNextOrder()
+            Btn.Parent = TabPage
+
             local Corner = Instance.new("UICorner"); Corner.CornerRadius = UDim.new(0, 14); Corner.Parent = Btn
-            
-            local TitleLabel = Instance.new("TextLabel"); TitleLabel.Size = UDim2.new(1, -28, 0, hasDesc and 22 or 42); TitleLabel.Position = UDim2.new(0, 14, 0, hasDesc and 6 or 0); TitleLabel.BackgroundTransparency = 1; TitleLabel.Text = title; TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255); TitleLabel.Font = Enum.Font.GothamBold; TitleLabel.TextSize = 12; TitleLabel.TextXAlignment = Enum.TextXAlignment.Left; TitleLabel.Parent = Btn
+            local Stroke = Instance.new("UIStroke"); Stroke.Color = Color3.fromRGB(0, 240, 255); Stroke.Thickness = 1; Stroke.Transparency = 0.7; Stroke.Parent = Btn
+
+            local TitleLabel = Instance.new("TextLabel")
+            TitleLabel.Size = UDim2.new(1, -110, 0, hasDesc and 22 or 44)
+            TitleLabel.Position = UDim2.new(0, 16, 0, hasDesc and 8 or 0)
+            TitleLabel.BackgroundTransparency = 1
+            TitleLabel.Text = title
+            TitleLabel.TextColor3 = Color3.fromRGB(240, 245, 255)
+            TitleLabel.Font = Enum.Font.GothamBold
+            TitleLabel.TextSize = 12
+            TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+            TitleLabel.Parent = Btn
 
             if hasDesc then
-                local DescLabel = Instance.new("TextLabel"); DescLabel.Size = UDim2.new(1, -28, 0, 18); DescLabel.Position = UDim2.new(0, 14, 0, 26); DescLabel.BackgroundTransparency = 1; DescLabel.Text = desc; DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175); DescLabel.Font = Enum.Font.GothamMedium; DescLabel.TextSize = 10; DescLabel.TextXAlignment = Enum.TextXAlignment.Left; DescLabel.Parent = Btn
+                local DescLabel = Instance.new("TextLabel")
+                DescLabel.Size = UDim2.new(1, -110, 0, 18)
+                DescLabel.Position = UDim2.new(0, 16, 0, 28)
+                DescLabel.BackgroundTransparency = 1
+                DescLabel.Text = desc
+                DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175)
+                DescLabel.Font = Enum.Font.GothamMedium
+                DescLabel.TextSize = 10
+                DescLabel.TextXAlignment = Enum.TextXAlignment.Left
+                DescLabel.Parent = Btn
             end
 
-            Btn.MouseButton1Click:Connect(function() if btnConfig.Callback then btnConfig.Callback() end end)
+       
+            local ActionBadge = Instance.new("Frame")
+            ActionBadge.Size = UDim2.new(0, 80, 0, 26)
+            ActionBadge.Position = UDim2.new(1, -94, 0.5, -13)
+            ActionBadge.BackgroundColor3 = Color3.fromRGB(0, 190, 255)
+            ActionBadge.Parent = Btn
+
+            local BadgeCorner = Instance.new("UICorner"); BadgeCorner.CornerRadius = UDim.new(0, 8); BadgeCorner.Parent = ActionBadge
+
+            local BadgeText = Instance.new("TextLabel")
+            BadgeText.Size = UDim2.new(1, 0, 1, 0)
+            BadgeText.BackgroundTransparency = 1
+            BadgeText.Text = "▶ Click"
+            BadgeText.TextColor3 = Color3.fromRGB(10, 14, 24)
+            BadgeText.Font = Enum.Font.GothamBold
+            BadgeText.TextSize = 11
+            BadgeText.Parent = ActionBadge
+
+            -- Hover & Click Animations
+            Btn.MouseEnter:Connect(function()
+                TweenService:Create(Btn, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(30, 36, 56) }):Play()
+                TweenService:Create(Stroke, TweenInfo.new(0.2), { Transparency = 0.2 }):Play()
+                TweenService:Create(ActionBadge, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(0, 230, 255) }):Play()
+            end)
+
+            Btn.MouseLeave:Connect(function()
+                TweenService:Create(Btn, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(22, 26, 40) }):Play()
+                TweenService:Create(Stroke, TweenInfo.new(0.2), { Transparency = 0.7 }):Play()
+                TweenService:Create(ActionBadge, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(0, 190, 255) }):Play()
+            end)
+
+            Btn.MouseButton1Click:Connect(function()
+                TweenService:Create(ActionBadge, TweenInfo.new(0.1), { BackgroundColor3 = Color3.fromRGB(255, 255, 255) }):Play()
+                task.wait(0.1)
+                TweenService:Create(ActionBadge, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(0, 190, 255) }):Play()
+                if btnConfig.Callback then btnConfig.Callback() end
+            end)
         end
 
         function TabObj:AddInput(id, inputConfig)
@@ -653,29 +716,4 @@ function NXHub:CreateWindow(config)
             function inputObj:OnChanged(func)
                 changedFunc = func
                 if changedFunc and val ~= nil then
-                    task.spawn(function() pcall(function() changedFunc(val) end) end)
-                end
-            end
-
-            TextBox:GetPropertyChangedSignal("Text"):Connect(function()
-                if inputConfig.Numeric then TextBox.Text = TextBox.Text:gsub("%D+", "") end
-                inputObj.Value = TextBox.Text
-                if changedFunc then pcall(function() changedFunc(TextBox.Text) end) end
-                SaveManager:SaveConfig("default")
-            end)
-
-            Options[id] = inputObj
-            return inputObj
-        end
-
-        return TabObj
-    end
-
-    function WindowObj:SelectTab(idx) end
-    function WindowObj:Minimize() MainFrame.Visible = not MainFrame.Visible end
-    function WindowObj:Dialog(dConfig) ShowDialog(dConfig) end
-
-    return WindowObj
-end
-
-return NXHub, SaveManager, InterfaceManager
+                    task.spawn(
