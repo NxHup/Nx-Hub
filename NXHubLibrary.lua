@@ -1,5 +1,5 @@
 -- =================================================================
--- NX HUB UI LIBRARY จะมาดูหาบิดาท่านหรอรู้นะ....
+-- NX HUB UI LIBRARY จะมาดูหาบิดาท่านหรอรู้นะ.
 -- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
@@ -61,7 +61,6 @@ local InterfaceManager = {}
 function InterfaceManager:SetLibrary() end
 function InterfaceManager:SetFolder() end
 function InterfaceManager:BuildInterfaceSection() end
-
 
 getgenv().SaveManager = SaveManager
 getgenv().InterfaceManager = InterfaceManager
@@ -243,7 +242,16 @@ function NXHub:CreateWindow(config)
         end
     end)
 
-    local TitleLbl = Instance.new("TextLabel"); TitleLbl.Size = UDim2.new(0, 280, 1, 0); TitleLbl.Position = UDim2.new(0, 18, 0, 0); TitleLbl.BackgroundTransparency = 1; TitleLbl.Text = "<font color=\"#00f0ff\"><b>" .. titleText .. "</b></font>  <font color=\"#ff00b7\">" .. subTitleText .. "</font>"; TitleLbl.RichText = true; TitleLbl.TextSize = 16; TitleLbl.Font = Enum.Font.GothamBold; TitleLbl.TextXAlignment = Enum.TextXAlignment.Left; TitleLbl.Parent = Topbar
+    -- 🟢 ข้อความหัวข้อหลัก (สีฟ้าใหญ่ size=17 / สีชมพูตัวเล็กย่อลง size=11)
+    local TitleLbl = Instance.new("TextLabel")
+    TitleLbl.Size = UDim2.new(0, 380, 1, 0)
+    TitleLbl.Position = UDim2.new(0, 18, 0, 0)
+    TitleLbl.BackgroundTransparency = 1
+    TitleLbl.Text = "<font color=\"#00f0ff\" size=\"17\"><b>" .. titleText .. "</b></font>   <font color=\"#ff00b7\" size=\"11\">" .. subTitleText .. "</font>"
+    TitleLbl.RichText = true
+    TitleLbl.Font = Enum.Font.GothamBold
+    TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLbl.Parent = Topbar
 
     local ControlsFrame = Instance.new("Frame"); ControlsFrame.Size = UDim2.new(0, 120, 1, -4); ControlsFrame.Position = UDim2.new(1, -125, 0, 2); ControlsFrame.BackgroundTransparency = 1; ControlsFrame.Parent = Topbar
     local ControlsLayout = Instance.new("UIListLayout"); ControlsLayout.FillDirection = Enum.FillDirection.Horizontal; ControlsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right; ControlsLayout.VerticalAlignment = Enum.VerticalAlignment.Center; ControlsLayout.Padding = UDim.new(0, 4); ControlsLayout.Parent = ControlsFrame
