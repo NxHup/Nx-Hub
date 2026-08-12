@@ -1,9 +1,7 @@
 -- =================================================================
 -- NX HUB UI LIBRARY จะมาดูหาบิดาท่านหรอรู้นะ.
 -- =================================================================
--- =================================================================
--- NX HUB UI LIBRARY (Real Lucide Image Icons & Fluent Style Upgrade)
--- =================================================================
+
 local NXHub = {}
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -23,7 +21,7 @@ NXHub.Options = Options
 
 local GlobalScreenGui = nil
 
--- Lucide Icon Roblox Asset ID Map (Fluent UI Standard)
+
 local LucideIcons = {
     ["home"] = "rbxassetid://10723346959",
     ["swords"] = "rbxassetid://10734952039",
@@ -54,7 +52,7 @@ local LucideIcons = {
     ["star"] = "rbxassetid://10734977012"
 }
 
--- Failsafe SaveManager Engine
+
 local SaveManager = { Folder = "NxHubMain" }
 
 function SaveManager:SetFolder(folder) SaveManager.Folder = folder end
@@ -189,7 +187,7 @@ function NXHub:CreateWindow(config)
         end
     end)
 
-    -- Logo Loader
+
     local logoConfig = config.Logo or config.LogoUrl or "https://cdn.jsdelivr.net/gh/NxHup/Nx-Hub@main/f5756ce8-6683-4be4-9845-29f066e64369.jpg"
     local logoAsset = nil
 
