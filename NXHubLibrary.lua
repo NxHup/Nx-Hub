@@ -1,5 +1,5 @@
 -- =================================================================
--- NX HUB UI LIBRARY จะมาดูหาบิดาท่านหรอรู้นะ.
+-- NX HUB UI LIBRARY จะมาดูหาบิดาท่านหรอรู้นะ
 -- =================================================================
 
 local NXHub = {}
@@ -23,17 +23,48 @@ local GlobalScreenGui = nil
 
 
 local LucideIcons = {
+    -- Main / Home
+    ["main"] = "rbxassetid://10723346959",
     ["home"] = "rbxassetid://10723346959",
+
+    -- Auto Farm / Swords
+    ["autofarm"] = "rbxassetid://10734952039",
+    ["farm"] = "rbxassetid://10734952039",
     ["swords"] = "rbxassetid://10734952039",
     ["sword"] = "rbxassetid://10734952039",
+    ["crosshair"] = "rbxassetid://10723373884",
+
+    -- Boss / Skull
+    ["boss"] = "rbxassetid://10734975692",
     ["skull"] = "rbxassetid://10734975692",
-    ["map-pin"] = "rbxassetid://10723415903",
+
+    -- Teleport / Map
+    ["teleport"] = "rbxassetid://10723415903",
     ["map"] = "rbxassetid://10723415903",
+    ["mappin"] = "rbxassetid://10723415903",
+    ["pin"] = "rbxassetid://10723415903",
+
+    -- Dungeon / Shield
+    ["dungeon"] = "rbxassetid://10734974077",
     ["shield"] = "rbxassetid://10734974077",
+
+    -- Random / Dice / Flame
+    ["random"] = "rbxassetid://10723376114",
     ["dices"] = "rbxassetid://10723376114",
     ["dice"] = "rbxassetid://10723376114",
+    ["flame"] = "rbxassetid://10723378365",
+    ["fire"] = "rbxassetid://10723378365",
+
+    -- Item / Items / Package / Inventory / Box
+    ["item"] = "rbxassetid://10734954751",
+    ["items"] = "rbxassetid://10734954751",
     ["package"] = "rbxassetid://10734954751",
     ["box"] = "rbxassetid://10723345518",
+    ["inventory"] = "rbxassetid://10734954751",
+    ["backpack"] = "rbxassetid://10734954751",
+
+    -- Misc / Settings
+    ["misc"] = "rbxassetid://10734979384",
     ["settings"] = "rbxassetid://10734979384",
     ["user"] = "rbxassetid://10747373176",
     ["player"] = "rbxassetid://10747373176",
@@ -41,18 +72,11 @@ local LucideIcons = {
     ["moon"] = "rbxassetid://10734950309",
     ["sun"] = "rbxassetid://10734977012",
     ["sparkles"] = "rbxassetid://10734976458",
-    ["flame"] = "rbxassetid://10723378365",
-    ["fire"] = "rbxassetid://10723378365",
     ["zap"] = "rbxassetid://10747384394",
-    ["bolt"] = "rbxassetid://10747384394",
-    ["shopping-cart"] = "rbxassetid://10734975124",
-    ["cart"] = "rbxassetid://10734975124",
-    ["trophy"] = "rbxassetid://10747382409",
-    ["heart"] = "rbxassetid://10723346158",
-    ["star"] = "rbxassetid://10734977012"
+    ["bolt"] = "rbxassetid://10747384394"
 }
 
-
+-- Failsafe SaveManager Engine
 local SaveManager = { Folder = "NxHubMain" }
 
 function SaveManager:SetFolder(folder) SaveManager.Folder = folder end
@@ -187,7 +211,7 @@ function NXHub:CreateWindow(config)
         end
     end)
 
-
+    -- Logo Loader
     local logoConfig = config.Logo or config.LogoUrl or "https://cdn.jsdelivr.net/gh/NxHup/Nx-Hub@main/f5756ce8-6683-4be4-9845-29f066e64369.jpg"
     local logoAsset = nil
 
@@ -408,18 +432,22 @@ function NXHub:CreateWindow(config)
     local WindowObj = {}
     local Tabs = {}
 
-    -- 🟢 AddTab: รองรับ Lucide Image Icons ลายเส้นเวกเตอร์ของ Fluent UI แท้
+
     function WindowObj:AddTab(tabConfig)
         local name = tabConfig.Title or "Tab"
         local iconInput = tabConfig.Icon
         local iconAsset = nil
 
         if iconInput then
-            local low = string.lower(tostring(iconInput))
-            if LucideIcons[low] then
-                iconAsset = LucideIcons[low]
-            elseif string.find(low, "rbxassetid://") or tonumber(iconInput) then
-                iconAsset = string.find(low, "rbxassetid://") and iconInput or ("rbxassetid://" .. tostring(iconInput))
+            local rawStr = tostring(iconInput)
+            local cleanKey = string.lower(rawStr):gsub("%s+", ""):gsub("%-+", "")
+            
+            if LucideIcons[cleanKey] then
+                iconAsset = LucideIcons[cleanKey]
+            elseif LucideIcons[string.lower(rawStr)] then
+                iconAsset = LucideIcons[string.lower(rawStr)]
+            elseif string.find(rawStr, "rbxassetid://") or tonumber(rawStr) then
+                iconAsset = string.find(rawStr, "rbxassetid://") and rawStr or ("rbxassetid://" .. rawStr)
             end
         end
 
