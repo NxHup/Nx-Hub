@@ -2,6 +2,7 @@
 -- NX HUB UI LIBRARY จะมาดูหาบิดาท่านหรอรู้นะ
 -- =================================================================
 
+
 local NXHub = {}
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -21,51 +22,29 @@ NXHub.Options = Options
 
 local GlobalScreenGui = nil
 
-
+-- Lucide Icon Roblox Asset ID Map (Verified Working IDs)
 local LucideIcons = {
-    -- Main / Home
-    ["main"] = "rbxassetid://10723346959",
     ["home"] = "rbxassetid://10723346959",
-
-    -- Auto Farm / Swords
-    ["autofarm"] = "rbxassetid://10734952039",
-    ["farm"] = "rbxassetid://10734952039",
+    ["main"] = "rbxassetid://10723346959",
     ["swords"] = "rbxassetid://10734952039",
     ["sword"] = "rbxassetid://10734952039",
-    ["crosshair"] = "rbxassetid://10723373884",
-
-    -- Boss / Skull
-    ["boss"] = "rbxassetid://10734975692",
+    ["autofarm"] = "rbxassetid://10734952039",
     ["skull"] = "rbxassetid://10734975692",
-
-    -- Teleport / Map
-    ["teleport"] = "rbxassetid://10723415903",
-    ["map"] = "rbxassetid://10723415903",
-    ["mappin"] = "rbxassetid://10723415903",
-    ["pin"] = "rbxassetid://10723415903",
-
-    -- Dungeon / Shield
-    ["dungeon"] = "rbxassetid://10734974077",
-    ["shield"] = "rbxassetid://10734974077",
-
-    -- Random / Dice / Flame
-    ["random"] = "rbxassetid://10723376114",
-    ["dices"] = "rbxassetid://10723376114",
-    ["dice"] = "rbxassetid://10723376114",
+    ["boss"] = "rbxassetid://10734975692",
     ["flame"] = "rbxassetid://10723378365",
     ["fire"] = "rbxassetid://10723378365",
-
-    -- Item / Items / Package / Inventory / Box
+    ["random"] = "rbxassetid://10723378365",
+    ["package"] = "rbxassetid://10734954751",
     ["item"] = "rbxassetid://10734954751",
     ["items"] = "rbxassetid://10734954751",
-    ["package"] = "rbxassetid://10734954751",
-    ["box"] = "rbxassetid://10723345518",
-    ["inventory"] = "rbxassetid://10734954751",
-    ["backpack"] = "rbxassetid://10734954751",
-
-    -- Misc / Settings
-    ["misc"] = "rbxassetid://10734979384",
+    ["map"] = "rbxassetid://10723415903",
+    ["teleport"] = "rbxassetid://10723415903",
+    ["mappin"] = "rbxassetid://10723415903",
+    ["shield"] = "rbxassetid://10734974077",
+    ["dungeon"] = "rbxassetid://10734974077",
     ["settings"] = "rbxassetid://10734979384",
+    ["misc"] = "rbxassetid://10734979384",
+    ["box"] = "rbxassetid://10734954751",
     ["user"] = "rbxassetid://10747373176",
     ["player"] = "rbxassetid://10747373176",
     ["crown"] = "rbxassetid://10723374120",
@@ -432,11 +411,11 @@ function NXHub:CreateWindow(config)
     local WindowObj = {}
     local Tabs = {}
 
-
+    --  AddTab
     function WindowObj:AddTab(tabConfig)
         local name = tabConfig.Title or "Tab"
         local iconInput = tabConfig.Icon
-        local iconAsset = nil
+        local iconAsset = "rbxassetid://10734979384" 
 
         if iconInput then
             local rawStr = tostring(iconInput)
@@ -466,24 +445,17 @@ function NXHub:CreateWindow(config)
         Indicator.Visible = false
         Indicator.Parent = TabBtn
 
-        local textPosOffset = 14
-        local IconImg = nil
-
-        if iconAsset then
-            IconImg = Instance.new("ImageLabel")
-            IconImg.Size = UDim2.new(0, 16, 0, 16)
-            IconImg.Position = UDim2.new(0, 12, 0.5, -8)
-            IconImg.BackgroundTransparency = 1
-            IconImg.Image = iconAsset
-            IconImg.ImageColor3 = Color3.fromRGB(150, 155, 175)
-            IconImg.Parent = TabBtn
-
-            textPosOffset = 34
-        end
+        local IconImg = Instance.new("ImageLabel")
+        IconImg.Size = UDim2.new(0, 16, 0, 16)
+        IconImg.Position = UDim2.new(0, 12, 0.5, -8)
+        IconImg.BackgroundTransparency = 1
+        IconImg.Image = iconAsset
+        IconImg.ImageColor3 = Color3.fromRGB(150, 155, 175)
+        IconImg.Parent = TabBtn
 
         local TabText = Instance.new("TextLabel")
-        TabText.Size = UDim2.new(1, -textPosOffset - 5, 1, 0)
-        TabText.Position = UDim2.new(0, textPosOffset, 0, 0)
+        TabText.Size = UDim2.new(1, -39, 1, 0)
+        TabText.Position = UDim2.new(0, 34, 0, 0)
         TabText.BackgroundTransparency = 1
         TabText.Text = name
         TabText.TextColor3 = Color3.fromRGB(150, 155, 175)
@@ -606,7 +578,7 @@ function NXHub:CreateWindow(config)
             local Fill = Instance.new("Frame"); Fill.Size = UDim2.new(ratio, 0, 1, 0); Fill.BackgroundColor3 = Color3.fromRGB(0, 190, 255); Fill.BorderSizePixel = 0; Fill.Parent = Bar
             local FillCorner = Instance.new("UICorner"); FillCorner.CornerRadius = UDim.new(1, 0); FillCorner.Parent = Fill
 
-            -- ⚪ Circular Slider Knob
+         
             local Knob = Instance.new("Frame")
             Knob.Size = UDim2.new(0, 16, 0, 16)
             Knob.Position = UDim2.new(ratio, -8, 0.5, -8)
