@@ -1,5 +1,5 @@
 -- =================================================================
--- NX HUB UI LIBRARY จะมาดูหาบิดาท่านหรอรู้นะm
+-- NX HUB UI LIBRARY จะมาดูหาบิดาท่านหรอรู้นะ
 -- =================================================================
 
 
@@ -22,37 +22,63 @@ NXHub.Options = Options
 
 local GlobalScreenGui = nil
 
--- Lucide Icon Roblox Asset ID Map (Verified Working IDs)
+-- Lucide Icon Asset Map (Verified High-Tech Asset IDs)
 local LucideIcons = {
+    -- Main (Dashboard / Sparkles / Terminal / Home)
+    ["layout-dashboard"] = "rbxassetid://10723346959",
+    ["dashboard"] = "rbxassetid://10723346959",
+    ["sparkles"] = "rbxassetid://10734976458",
+    ["terminal"] = "rbxassetid://10747384394",
     ["home"] = "rbxassetid://10723346959",
     ["main"] = "rbxassetid://10723346959",
+
+    -- Auto Farm (Crosshair / Zap / Swords)
+    ["crosshair"] = "rbxassetid://10723373884",
+    ["target"] = "rbxassetid://10723373884",
+    ["zap"] = "rbxassetid://10747384394",
     ["swords"] = "rbxassetid://10734952039",
     ["sword"] = "rbxassetid://10734952039",
-    ["autofarm"] = "rbxassetid://10734952039",
+    ["autofarm"] = "rbxassetid://10723373884",
+
+    -- Boss (Skull / Ghost)
     ["skull"] = "rbxassetid://10734975692",
     ["boss"] = "rbxassetid://10734975692",
-    ["flame"] = "rbxassetid://10723378365",
-    ["fire"] = "rbxassetid://10723378365",
-    ["random"] = "rbxassetid://10723378365",
+    ["ghost"] = "rbxassetid://10734975692",
+
+    -- Random (Dices / Gem / Wand / Gift)
+    ["dices"] = "rbxassetid://10723376114",
+    ["dice"] = "rbxassetid://10723376114",
+    ["random"] = "rbxassetid://10723376114",
+    ["gem"] = "rbxassetid://10723374120",
+    ["wand"] = "rbxassetid://10734976458",
+
+    -- Item (Backpack / Shopping-bag / Package / Hammer)
+    ["backpack"] = "rbxassetid://10734954751",
     ["package"] = "rbxassetid://10734954751",
     ["item"] = "rbxassetid://10734954751",
     ["items"] = "rbxassetid://10734954751",
-    ["map"] = "rbxassetid://10723415903",
+    ["shopping-bag"] = "rbxassetid://10734975124",
+    ["hammer"] = "rbxassetid://10734979384",
+
+    -- Teleport (Compass / Map-pin / Navigation)
+    ["compass"] = "rbxassetid://10723415903",
+    ["map-pin"] = "rbxassetid://10723415903",
+    ["navigation"] = "rbxassetid://10723415903",
     ["teleport"] = "rbxassetid://10723415903",
-    ["mappin"] = "rbxassetid://10723415903",
-    ["shield"] = "rbxassetid://10734974077",
-    ["dungeon"] = "rbxassetid://10734974077",
-    ["settings"] = "rbxassetid://10734979384",
-    ["misc"] = "rbxassetid://10734979384",
-    ["box"] = "rbxassetid://10734954751",
-    ["user"] = "rbxassetid://10747373176",
-    ["player"] = "rbxassetid://10747373176",
-    ["crown"] = "rbxassetid://10723374120",
+    ["map"] = "rbxassetid://10723415903",
+
+    -- Dungeon (Moon / Shield-check / Castle)
     ["moon"] = "rbxassetid://10734950309",
-    ["sun"] = "rbxassetid://10734977012",
-    ["sparkles"] = "rbxassetid://10734976458",
-    ["zap"] = "rbxassetid://10747384394",
-    ["bolt"] = "rbxassetid://10747384394"
+    ["dungeon"] = "rbxassetid://10734950309",
+    ["shield"] = "rbxassetid://10734974077",
+    ["shield-check"] = "rbxassetid://10734974077",
+
+    -- Misc (Sliders / Cpu / Wrench / Settings)
+    ["sliders"] = "rbxassetid://10734979384",
+    ["misc"] = "rbxassetid://10734979384",
+    ["cpu"] = "rbxassetid://10734979384",
+    ["wrench"] = "rbxassetid://10734979384",
+    ["settings"] = "rbxassetid://10734979384"
 }
 
 -- Failsafe SaveManager Engine
@@ -411,11 +437,11 @@ function NXHub:CreateWindow(config)
     local WindowObj = {}
     local Tabs = {}
 
-    --  AddTab
+    -- 🟢 AddTab: Universal Icon System (Lucide Icon, URL Image, Roblox Asset ID, Text Emoji)
     function WindowObj:AddTab(tabConfig)
         local name = tabConfig.Title or "Tab"
         local iconInput = tabConfig.Icon
-        local iconAsset = "rbxassetid://10734979384" 
+        local iconAsset = "rbxassetid://10723346959" -- Default High-Tech Icon
 
         if iconInput then
             local rawStr = tostring(iconInput)
@@ -425,6 +451,19 @@ function NXHub:CreateWindow(config)
                 iconAsset = LucideIcons[cleanKey]
             elseif LucideIcons[string.lower(rawStr)] then
                 iconAsset = LucideIcons[string.lower(rawStr)]
+            elseif string.find(rawStr, "http://") or string.find(rawStr, "https://") then
+                local iconFileName = "NXTabIcon_" .. string.gsub(rawStr, "%W", "") .. ".png"
+                pcall(function()
+                    if isfile and writefile and game.HttpGet then
+                        if not isfile(iconFileName) then
+                            local imgData = game:HttpGet(rawStr)
+                            if imgData and #imgData > 200 then writefile(iconFileName, imgData) end
+                        end
+                        if isfile(iconFileName) and getcustomasset then
+                            iconAsset = getcustomasset(iconFileName)
+                        end
+                    end
+                end)
             elseif string.find(rawStr, "rbxassetid://") or tonumber(rawStr) then
                 iconAsset = string.find(rawStr, "rbxassetid://") and rawStr or ("rbxassetid://" .. rawStr)
             end
@@ -578,7 +617,7 @@ function NXHub:CreateWindow(config)
             local Fill = Instance.new("Frame"); Fill.Size = UDim2.new(ratio, 0, 1, 0); Fill.BackgroundColor3 = Color3.fromRGB(0, 190, 255); Fill.BorderSizePixel = 0; Fill.Parent = Bar
             local FillCorner = Instance.new("UICorner"); FillCorner.CornerRadius = UDim.new(1, 0); FillCorner.Parent = Fill
 
-         
+            -- ⚪ Circular Slider Knob
             local Knob = Instance.new("Frame")
             Knob.Size = UDim2.new(0, 16, 0, 16)
             Knob.Position = UDim2.new(ratio, -8, 0.5, -8)
@@ -838,7 +877,7 @@ function NXHub:CreateWindow(config)
             local Corner = Instance.new("UICorner"); Corner.CornerRadius = UDim.new(0, 14); Corner.Parent = Frame
             local Label = Instance.new("TextLabel"); Label.Size = UDim2.new(1, -160, 0, hasDesc and 22 or 44); Label.Position = UDim2.new(0, 16, 0, hasDesc and 8 or 0); Label.BackgroundTransparency = 1; Label.Text = title; Label.TextColor3 = Color3.fromRGB(230, 235, 245); Label.Font = Enum.Font.GothamMedium; Label.TextSize = 12; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.Parent = Frame
             
-            if hasDesc then
+            if hasDesc me
                 local DescLabel = Instance.new("TextLabel"); DescLabel.Size = UDim2.new(1, -160, 0, 18); DescLabel.Position = UDim2.new(0, 16, 0, 28); DescLabel.BackgroundTransparency = 1; DescLabel.Text = desc; DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175); DescLabel.Font = Enum.Font.GothamMedium; DescLabel.TextSize = 10; DescLabel.TextXAlignment = Enum.TextXAlignment.Left; DescLabel.Parent = Frame
             end
 
