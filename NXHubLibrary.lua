@@ -2,7 +2,7 @@
 -- NX HUB UI LIBRARY จะมาดูหาบิดาท่านหรอรู้นะ
 -- =================================================================
 
-
+-- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -617,7 +617,7 @@ function NXHub:CreateWindow(config)
             local Fill = Instance.new("Frame"); Fill.Size = UDim2.new(ratio, 0, 1, 0); Fill.BackgroundColor3 = Color3.fromRGB(0, 190, 255); Fill.BorderSizePixel = 0; Fill.Parent = Bar
             local FillCorner = Instance.new("UICorner"); FillCorner.CornerRadius = UDim.new(1, 0); FillCorner.Parent = Fill
 
-            -- ⚪ Circular Slider Knob
+      
             local Knob = Instance.new("Frame")
             Knob.Size = UDim2.new(0, 16, 0, 16)
             Knob.Position = UDim2.new(ratio, -8, 0.5, -8)
@@ -877,7 +877,7 @@ function NXHub:CreateWindow(config)
             local Corner = Instance.new("UICorner"); Corner.CornerRadius = UDim.new(0, 14); Corner.Parent = Frame
             local Label = Instance.new("TextLabel"); Label.Size = UDim2.new(1, -160, 0, hasDesc and 22 or 44); Label.Position = UDim2.new(0, 16, 0, hasDesc and 8 or 0); Label.BackgroundTransparency = 1; Label.Text = title; Label.TextColor3 = Color3.fromRGB(230, 235, 245); Label.Font = Enum.Font.GothamMedium; Label.TextSize = 12; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.Parent = Frame
             
-            if hasDesc me
+            if hasDesc then
                 local DescLabel = Instance.new("TextLabel"); DescLabel.Size = UDim2.new(1, -160, 0, 18); DescLabel.Position = UDim2.new(0, 16, 0, 28); DescLabel.BackgroundTransparency = 1; DescLabel.Text = desc; DescLabel.TextColor3 = Color3.fromRGB(140, 150, 175); DescLabel.Font = Enum.Font.GothamMedium; DescLabel.TextSize = 10; DescLabel.TextXAlignment = Enum.TextXAlignment.Left; DescLabel.Parent = Frame
             end
 
