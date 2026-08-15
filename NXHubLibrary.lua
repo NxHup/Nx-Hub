@@ -2,6 +2,7 @@
 -- NX HUB UI LIBRARY จะมาดูหาบิดาท่านหรอรู้นะ
 -- =================================================================
 
+-- =================================================================
 local NXHub = {}
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -88,13 +89,11 @@ function NXHub:Notify(config)
     ContentLbl.ZIndex = 201; ContentLbl.Parent = NotifFrame
 
     TweenService:Create(NotifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.new(1, -280, 1, -90) }):Play()
-
     if duration then
         task.delay(duration, function()
             if NotifFrame and NotifFrame.Parent then
                 TweenService:Create(NotifFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(1, 290, 1, -90) }):Play()
-                task.wait(0.3)
-                NotifFrame:Destroy()
+                task.wait(0.3); NotifFrame:Destroy()
             end
         end)
     end
@@ -167,9 +166,7 @@ function NXHub:CreateWindow(config)
                             writefile(filename, imageData)
                         end
                     end
-                    if isfile(filename) and getcustomasset then
-                        logoAsset = getcustomasset(filename)
-                    end
+                    if isfile(filename) and getcustomasset then logoAsset = getcustomasset(filename) end
                 end
             end)
         else
@@ -302,19 +299,18 @@ function NXHub:CreateWindow(config)
     ControlsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
     ControlsLayout.Padding = UDim.new(0, 4); ControlsLayout.Parent = ControlsFrame
 
-    local function makeCtrlBtn(txt)
+    local function makeCtrlBtn(txt, size)
         local Btn = Instance.new("TextButton")
         Btn.Size = UDim2.new(0, 34, 0, 26); Btn.BackgroundTransparency = 1
         Btn.Text = txt; Btn.TextColor3 = Color3.fromRGB(200, 205, 225)
-        Btn.Font = Enum.Font.GothamBold; Btn.TextSize = 15; Btn.Parent = ControlsFrame
+        Btn.Font = Enum.Font.GothamBold; Btn.TextSize = size or 15; Btn.Parent = ControlsFrame
         local C = Instance.new("UICorner"); C.CornerRadius = UDim.new(0, 8); C.Parent = Btn
         return Btn
     end
 
     local MinBtn = makeCtrlBtn("-")
     local MaxBtn = makeCtrlBtn("+")
-    local CloseBtn = makeCtrlBtn("X")
-    CloseBtn.TextSize = 13
+    local CloseBtn = makeCtrlBtn("X", 13)
 
     MinBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
     MaxBtn.MouseButton1Click:Connect(function()
@@ -346,7 +342,6 @@ function NXHub:CreateWindow(config)
     ContentContainer.Position = UDim2.new(0, 160, 0, 51)
     ContentContainer.BackgroundTransparency = 1; ContentContainer.Parent = WindowBg
 
-    -- Dialog
     local function ShowDialog(dConfig)
         local Overlay = Instance.new("Frame"); Overlay.Size = UDim2.new(1, 0, 1, 0); Overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0); Overlay.BackgroundTransparency = 0.5; Overlay.ZIndex = 100; Overlay.Parent = WindowBg
         local DialogBox = Instance.new("Frame"); DialogBox.Size = UDim2.new(0, 330, 0, 165); DialogBox.Position = UDim2.new(0.5, -165, 0.5, -82); DialogBox.BackgroundColor3 = Color3.fromRGB(22, 25, 38); DialogBox.ZIndex = 101; DialogBox.Parent = Overlay
@@ -387,7 +382,7 @@ function NXHub:CreateWindow(config)
     local WindowObj = {}
     local Tabs = {}
 
-    -- ✅ AddTab (ไม่มีไอคอน - แสดงแค่ชื่อ)
+    -- ✅ AddTab (ไม่มีไอคอน - ตัวหนังสืออยู่ตรงกลาง)
     function WindowObj:AddTab(tabConfig)
         local name = tabConfig.Title or "Tab"
 
@@ -406,16 +401,16 @@ function NXHub:CreateWindow(config)
         Indicator.Visible = false
         Indicator.Parent = TabBtn
 
-        -- ✅ ชื่อแท็บ (ขยับมาชิดซ้าย ไม่มีไอคอน)
+        -- ✅ ตัวหนังสืออยู่ตรงกลาง
         local TabText = Instance.new("TextLabel")
-        TabText.Size = UDim2.new(1, -20, 1, 0)
-        TabText.Position = UDim2.new(0, 12, 0, 0)
+        TabText.Size = UDim2.new(1, 0, 1, 0)
+        TabText.Position = UDim2.new(0, 0, 0, 0)
         TabText.BackgroundTransparency = 1
         TabText.Text = name
         TabText.TextColor3 = Color3.fromRGB(150, 155, 175)
         TabText.Font = Enum.Font.GothamMedium
         TabText.TextSize = 12
-        TabText.TextXAlignment = Enum.TextXAlignment.Left
+        TabText.TextXAlignment = Enum.TextXAlignment.Center
         TabText.Parent = TabBtn
 
         local TabPage = Instance.new("ScrollingFrame")
@@ -470,7 +465,6 @@ function NXHub:CreateWindow(config)
             if hasDesc then
                 local D = Instance.new("TextLabel"); D.Size = UDim2.new(1, -70, 0, 18); D.Position = UDim2.new(0, 16, 0, 28); D.BackgroundTransparency = 1; D.Text = desc; D.TextColor3 = Color3.fromRGB(140, 150, 175); D.Font = Enum.Font.GothamMedium; D.TextSize = 10; D.TextXAlignment = Enum.TextXAlignment.Left; D.Parent = Frame
             end
-
             local SwitchBg = Instance.new("Frame"); SwitchBg.Size = UDim2.new(0, 46, 0, 24); SwitchBg.Position = UDim2.new(1, -58, 0.5, -12); SwitchBg.BackgroundColor3 = state and Color3.fromRGB(0, 220, 140) or Color3.fromRGB(45, 49, 68); SwitchBg.Parent = Frame
             local SwitchCorner = Instance.new("UICorner"); SwitchCorner.CornerRadius = UDim.new(1, 0); SwitchCorner.Parent = SwitchBg
             local Knob = Instance.new("Frame"); Knob.Size = UDim2.new(0, 20, 0, 20); Knob.Position = state and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10); Knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255); Knob.Parent = SwitchBg
@@ -510,7 +504,6 @@ function NXHub:CreateWindow(config)
             if hasDesc then
                 local D = Instance.new("TextLabel"); D.Size = UDim2.new(1, -70, 0, 18); D.Position = UDim2.new(0, 16, 0, 24); D.BackgroundTransparency = 1; D.Text = desc; D.TextColor3 = Color3.fromRGB(140, 150, 175); D.Font = Enum.Font.GothamMedium; D.TextSize = 10; D.TextXAlignment = Enum.TextXAlignment.Left; D.Parent = Frame
             end
-
             local ValLabel = Instance.new("TextLabel"); ValLabel.Size = UDim2.new(0, 50, 0, 22); ValLabel.Position = UDim2.new(1, -62, 0, 4); ValLabel.BackgroundTransparency = 1; ValLabel.Text = tostring(val); ValLabel.TextColor3 = Color3.fromRGB(0, 240, 255); ValLabel.Font = Enum.Font.GothamBold; ValLabel.TextSize = 13; ValLabel.Parent = Frame
             local Bar = Instance.new("TextButton"); Bar.Size = UDim2.new(1, -32, 0, 8); Bar.Position = UDim2.new(0, 16, 0, hasDesc and 48 or 33); Bar.BackgroundColor3 = Color3.fromRGB(14, 16, 24); Bar.Text = ""; Bar.Parent = Frame
             local BarCorner = Instance.new("UICorner"); BarCorner.CornerRadius = UDim.new(1, 0); BarCorner.Parent = Bar
@@ -518,7 +511,6 @@ function NXHub:CreateWindow(config)
             local ratio = math.clamp((val - min) / (max - min), 0, 1)
             local Fill = Instance.new("Frame"); Fill.Size = UDim2.new(ratio, 0, 1, 0); Fill.BackgroundColor3 = Color3.fromRGB(0, 190, 255); Fill.BorderSizePixel = 0; Fill.Parent = Bar
             local FillCorner = Instance.new("UICorner"); FillCorner.CornerRadius = UDim.new(1, 0); FillCorner.Parent = Fill
-
             local Knob = Instance.new("Frame"); Knob.Size = UDim2.new(0, 16, 0, 16); Knob.Position = UDim2.new(ratio, -8, 0.5, -8); Knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255); Knob.ZIndex = 5; Knob.Parent = Bar
             local KnobCorner = Instance.new("UICorner"); KnobCorner.CornerRadius = UDim.new(1, 0); KnobCorner.Parent = Knob
             local KnobStroke = Instance.new("UIStroke"); KnobStroke.Color = Color3.fromRGB(0, 190, 255); KnobStroke.Thickness = 1.5; KnobStroke.Parent = Knob
